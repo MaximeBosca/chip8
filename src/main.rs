@@ -69,6 +69,7 @@ fn game_loop(state: &mut State) {
             line += 6;
         }
     }
+    //state.screen.flip_pixel(1,1);
     state.screen.update();
     'running: loop {
         ::std::thread::sleep(Duration::new(0, 100_000_000));

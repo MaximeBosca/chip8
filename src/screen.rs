@@ -1,7 +1,7 @@
 extern crate sdl3;
-use sdl3::pixels::Color;
+use sdl3::pixels::{Color, PixelFormat, PixelMasks};
 use sdl3::rect::Point;
-use sdl3::render::{create_renderer, Canvas};
+use sdl3::render::{create_renderer, Canvas, ScaleMode, TextureAccess};
 use sdl3::video::Window;
 use bit_iter::BitIter;
 
@@ -19,6 +19,7 @@ pub struct Screen {
     height: usize,
     on_color: Color,
     off_color: Color,
+    pixels: [u8; WINDOW_WIDTH * WINDOW_HEIGHT], // TODO : Fix the bit representation of pixels in the array for texture
 }
 
 impl Screen {
@@ -33,9 +34,8 @@ impl Screen {
         .build()
         .unwrap();
         let mut canvas = create_renderer(window, None).unwrap();
-        canvas.texture_creator().create_texture()
+        //canvas.texture_creator().create_texture()
         canvas.set_scale(WINDOW_SCALE as f32, WINDOW_SCALE as f32).unwrap();
-
         canvas.set_draw_color(COLOR_BLACK);
         canvas.clear();
         canvas.present();
@@ -45,6 +45,7 @@ impl Screen {
             height: WINDOW_HEIGHT,
             on_color: COLOR_WHITE,
             off_color: COLOR_BLACK,
+            pixels: [0; WINDOW_WIDTH*WINDOW_HEIGHT]
         }
     }
 
@@ -54,15 +55,22 @@ impl Screen {
             false => self.off_color,
         });
         self.canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
+        self.pixels[y * self.width + x] = is_on as u8 * 255;
     }
     
     pub fn flip_pixel(&mut self, x: usize, y: usize) {
-        self.canvas.read_pixels()
+        self.pixels[y * self.width + x] = (self.pixels[y * self.width + x]==0) as u8 * 255;
+        let texture_creator = self.canvas.texture_creator();
+        let mut texture = texture_creator.create_texture_target(None, self.width as u32, self.height as u32).unwrap();
+        texture.update(None,&self.pixels,self.width).unwrap();
+        texture.set_scale_mode(ScaleMode::Nearest);
+        println!("{:?}",texture.format());
+        self.canvas.copy(&texture, None, None).unwrap();
     }
     
     pub fn draw_byte(&mut self, byte: &u8, x: usize, y: usize) {
         for index in BitIter::from(*byte) {
-            self.draw_pixel(x + 8 - index, y, true)
+            self.draw_pixel(x + 8 - index, y, true);
         }
     }
     
