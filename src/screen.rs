@@ -1,17 +1,26 @@
 extern crate sdl3;
 use sdl3::pixels::{Color, PixelFormat, PixelMasks};
-use sdl3::rect::Point;
-use sdl3::render::{create_renderer, Canvas, ScaleMode, TextureAccess};
+use sdl3::render::{create_renderer, Canvas, ScaleMode};
 use sdl3::video::Window;
 use bit_iter::BitIter;
 
-const WINDOW_WIDTH: usize = 62;
+const WINDOW_WIDTH: usize = 64;
 const WINDOW_HEIGHT: usize = 32;
 const WINDOW_SCALE: usize = 16;
 
-pub const COLOR_BLACK: Color = Color::RGB(0, 0, 0);
-pub const COLOR_WHITE: Color = Color::RGB(255, 255, 255);
-pub const COLOR_GREEN: Color = Color::RGB(0, 255, 0);
+pub const COLOR_BLACK: Color = Color::RGBA(0, 0, 0, 255);
+pub const COLOR_WHITE: Color = Color::RGBA(255, 255, 255, 255); // A B G R
+pub const COLOR_GREEN: Color = Color::RGBA(0, 255, 0, 255);
+
+const PIXEL_MASKS: PixelMasks = PixelMasks {
+    bpp: 32,
+    rmask: 0x000000FF,
+    gmask: 0x0000FF00,
+    bmask: 0x00FF0000,
+    amask: 0xFF000000,
+};
+
+const BYTES_PER_PIXEL: usize = PIXEL_MASKS.bpp as usize / 8;
 
 pub struct Screen {
     canvas: Canvas<Window>,
@@ -19,7 +28,8 @@ pub struct Screen {
     height: usize,
     on_color: Color,
     off_color: Color,
-    pixels: [u8; WINDOW_WIDTH * WINDOW_HEIGHT], // TODO : Fix the bit representation of pixels in the array for texture
+    pixels: [u8; WINDOW_WIDTH * WINDOW_HEIGHT * BYTES_PER_PIXEL],
+    pixel_format: PixelFormat,
 }
 
 impl Screen {
@@ -34,7 +44,6 @@ impl Screen {
         .build()
         .unwrap();
         let mut canvas = create_renderer(window, None).unwrap();
-        //canvas.texture_creator().create_texture()
         canvas.set_scale(WINDOW_SCALE as f32, WINDOW_SCALE as f32).unwrap();
         canvas.set_draw_color(COLOR_BLACK);
         canvas.clear();
@@ -43,35 +52,54 @@ impl Screen {
             canvas,
             width: WINDOW_WIDTH,
             height: WINDOW_HEIGHT,
-            on_color: COLOR_WHITE,
+            on_color: COLOR_GREEN,
             off_color: COLOR_BLACK,
-            pixels: [0; WINDOW_WIDTH*WINDOW_HEIGHT]
+            pixels: [0; WINDOW_WIDTH*WINDOW_HEIGHT*BYTES_PER_PIXEL],
+            pixel_format: PixelFormat::from_masks(PIXEL_MASKS),
         }
+    }
+    pub(crate) fn draw_sprite(&mut self, x: usize, y: usize, sprite: &[u8]) -> bool{
+        let mut flipped_off = false;
+        for (i, byte) in sprite.iter().enumerate() {
+            flipped_off = flipped_off | self.draw_byte(byte, x, y + i)
+        }
+        self.update();
+        flipped_off
+    }
+    
+    pub fn draw_pixel(&mut self, x: usize, y: usize) -> bool {
+        if x >= self.width || y >= self.height {
+            return false;
+        }
+        let index = (y * self.width + x) * BYTES_PER_PIXEL;
+        self.flip_pixel(index)
     }
 
-    pub fn draw_pixel(&mut self, x: usize, y: usize, is_on: bool) {
-        self.canvas.set_draw_color(match is_on {
-            true => self.on_color,
-            false => self.off_color,
-        });
-        self.canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
-        self.pixels[y * self.width + x] = is_on as u8 * 255;
-    }
-    
-    pub fn flip_pixel(&mut self, x: usize, y: usize) {
-        self.pixels[y * self.width + x] = (self.pixels[y * self.width + x]==0) as u8 * 255;
-        let texture_creator = self.canvas.texture_creator();
-        let mut texture = texture_creator.create_texture_target(None, self.width as u32, self.height as u32).unwrap();
-        texture.update(None,&self.pixels,self.width).unwrap();
-        texture.set_scale_mode(ScaleMode::Nearest);
-        println!("{:?}",texture.format());
-        self.canvas.copy(&texture, None, None).unwrap();
-    }
-    
-    pub fn draw_byte(&mut self, byte: &u8, x: usize, y: usize) {
-        for index in BitIter::from(*byte) {
-            self.draw_pixel(x + 8 - index, y, true);
+    fn flip_pixel(&mut self, index: usize) -> bool {
+        let mut flipped_off = false;
+        let mut r = self.pixels[index];
+        let mut g = self.pixels[index+1];
+        let mut b = self.pixels[index+2];
+        let mut a = self.pixels[index+3];
+        if (r,g,b,a) == self.on_color.rgba() {
+            (r,g,b,a) = self.off_color.rgba();
+            flipped_off = true;
+        } else {
+            (r,g,b,a) = self.on_color.rgba();
         }
+        self.pixels[index] = r;
+        self.pixels[index+1] = g;
+        self.pixels[index+2] = b;
+        self.pixels[index+3] = a;
+        flipped_off
+    }
+    
+    pub fn draw_byte(&mut self, byte: &u8, x: usize, y: usize) -> bool{
+        let mut flipped_off = false;
+        for index in BitIter::from(*byte) {
+            flipped_off = flipped_off | self.draw_pixel(x + 7 - index, y);
+        }
+        flipped_off
     }
     
     pub fn clear(&mut self) {
@@ -79,7 +107,15 @@ impl Screen {
         self.canvas.clear();
     }
     
-    pub fn update(&mut self) {
+    fn update(&mut self) {
+        let texture_creator = self.canvas.texture_creator();
+        let mut texture = texture_creator.create_texture_target(
+            self.pixel_format,
+            self.width as u32,
+            self.height as u32).unwrap();
+        texture.update(None,&self.pixels,self.width*BYTES_PER_PIXEL).unwrap();
+        texture.set_scale_mode(ScaleMode::Nearest);
+        self.canvas.copy(&texture, None, None).unwrap();
         self.canvas.present();
     }
 
