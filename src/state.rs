@@ -1,3 +1,4 @@
+use crate::game_window::{COLOR_BLACK, COLOR_GREEN};
 use crate::screen::Screen;
 use crate::stack::Stack;
 
@@ -23,7 +24,7 @@ impl State {
             delay_timer: 0,
             sound_timer: 0,
             registers: [0; REGISTERS_SIZE],
-            screen: Screen::new(),
+            screen: Screen::new(COLOR_GREEN, COLOR_BLACK),
         }
     }
     pub fn register(self: &Self, index :usize) -> u8 {

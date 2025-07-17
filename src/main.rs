@@ -2,6 +2,7 @@ extern crate sdl3;
 
 use std::fs;
 use std::io::Read;
+use crate::game_window::GameWindow;
 use crate::state::State;
 
 mod screen;
@@ -39,7 +40,8 @@ fn main() {
     let rom_path = "roms/test_opcode.ch8";
     //let rom_path = "roms/bc_test.ch8";
     load_rom(&mut state, rom_path);
-    interpreter::game_loop(&mut state);
+    let mut game_window = GameWindow::new();
+    interpreter::game_loop(&mut state, &mut game_window);
 }
 
 fn load_font(state: &mut State, font: [[u8; 5]; 16]) {

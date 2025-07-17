@@ -1,6 +1,7 @@
 use std::time::Duration;
 use rand::Rng;
-use crate::FONT_ADDRESS;
+use crate::{game_window, FONT_ADDRESS};
+use crate::game_window::GameWindow;
 use crate::instruction::{Instruction, Operator};
 use crate::state::State;
 
@@ -10,11 +11,12 @@ enum InterpreterVariant {
     CosmacVip,
     Chip48,
 }
-pub fn game_loop(state: &mut State) {
+pub fn game_loop(state: &mut State, game_window: &mut GameWindow) {
     'running: loop {
         let (byte1, byte2) = fetch(state);
         let instruction = decode(byte1, byte2);
         execute(instruction, state);
+        game_window.update(&state.screen);
         ::std::thread::sleep(Duration::new(0, 100_000_000));
     }
 }
