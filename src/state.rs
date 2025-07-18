@@ -1,5 +1,5 @@
-use crate::game_window::{COLOR_BLACK, COLOR_GREEN};
 use crate::screen::Screen;
+use crate::screen_config::ScreenConfig;
 use crate::stack::Stack;
 
 const REGISTERS_SIZE: usize = 16;
@@ -15,7 +15,7 @@ pub struct State {
     pub screen: Screen,
 }
 impl State {
-    pub fn new() -> Self {
+    pub fn new(screen_config: &ScreenConfig) -> Self {
         Self {
             ram: [0; RAM_SIZE],
             stack: Stack::new(),
@@ -24,7 +24,7 @@ impl State {
             delay_timer: 0,
             sound_timer: 0,
             registers: [0; REGISTERS_SIZE],
-            screen: Screen::new(COLOR_GREEN, COLOR_BLACK),
+            screen: Screen::new(screen_config),
         }
     }
     pub fn register(self: &Self, index :usize) -> u8 {

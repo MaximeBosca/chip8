@@ -1,6 +1,6 @@
 use std::time::Duration;
 use rand::Rng;
-use crate::{game_window, FONT_ADDRESS};
+use crate::{FONT_ADDRESS};
 use crate::game_window::GameWindow;
 use crate::instruction::{Instruction, Operator};
 use crate::state::State;
@@ -17,7 +17,7 @@ pub fn game_loop(state: &mut State, game_window: &mut GameWindow) {
         let instruction = decode(byte1, byte2);
         execute(instruction, state);
         game_window.update(&state.screen);
-        ::std::thread::sleep(Duration::new(0, 100_000_000));
+        std::thread::sleep(Duration::new(0, 100_000_000));
     }
 }
 
@@ -168,8 +168,8 @@ fn subtract(x: u8, y: u8) -> (u8, u8) {
 }
 
 fn draw(state: &mut State, rx: usize, ry: usize, sprite_height: u8) {
-    let x = state.register(rx) as usize % state.screen.width();
-    let y = state.register(ry) as usize % state.screen.height();
+    let x = state.register(rx) as usize % state.screen.width;
+    let y = state.register(ry) as usize % state.screen.height;
     let begin = state.index as usize;
     let end = begin + sprite_height as usize;
     let overflow = state.screen.draw_sprite(x, y, &state.ram[begin..end]) as u8;

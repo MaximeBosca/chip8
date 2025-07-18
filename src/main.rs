@@ -2,7 +2,9 @@ extern crate sdl3;
 
 use std::fs;
 use std::io::Read;
+use std::time::Duration;
 use crate::game_window::GameWindow;
+use crate::screen_config::ScreenConfig;
 use crate::state::State;
 
 mod screen;
@@ -11,6 +13,7 @@ mod instruction;
 mod game_window;
 mod state;
 mod interpreter;
+mod screen_config;
 
 const FONT: [[u8; 5]; 16] = [
     [0xf0, 0x90, 0x90, 0x90, 0xf0], // 0
@@ -34,13 +37,14 @@ const FONT: [[u8; 5]; 16] = [
 const FONT_ADDRESS: u16 = 0x050;
 
 fn main() {
-    let mut state = State::new();
+    let screen_config = ScreenConfig::default();
+    let mut state = State::new(&screen_config);
     load_font(&mut state, FONT);
-    //let rom_path = "roms/2-ibm-logo.ch8";
-    let rom_path = "roms/test_opcode.ch8";
+    let rom_path = "roms/2-ibm-logo.ch8";
+    //let rom_path = "roms/test_opcode.ch8";
     //let rom_path = "roms/bc_test.ch8";
     load_rom(&mut state, rom_path);
-    let mut game_window = GameWindow::new();
+    let mut game_window = GameWindow::new(screen_config);
     interpreter::game_loop(&mut state, &mut game_window);
 }
 
