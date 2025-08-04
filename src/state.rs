@@ -42,4 +42,19 @@ impl State {
     pub fn set_vf(self: &mut Self, value: u8) {
         self.registers[REGISTERS_SIZE - 1] = value;
     }
+
+    pub fn read_ram(self: &Self, addr: usize) -> Result<u8, &str> {
+        if addr >= self.ram.len() {
+            return Err("Overflowing Ram")
+        }
+        Ok(self.ram[addr])
+    }
+
+    pub fn read_ram_16(self: &Self, addr: usize) -> Result<(u8, u8), &str> {
+        Ok((self.read_ram(addr)?, self.read_ram(addr + 1)?))
+    }
+
+    pub fn register_numbers(self: &Self) -> usize {
+        self.registers.len()
+    }
 }

@@ -37,14 +37,15 @@ const FONT: [[u8; 5]; 16] = [
 const FONT_ADDRESS: u16 = 0x050;
 
 fn main() {
+    let sdl_context = sdl3::init().unwrap();
     let screen_config = ScreenConfig::default();
     let mut state = State::new(&screen_config);
     load_font(&mut state, FONT);
-    let rom_path = "roms/2-ibm-logo.ch8";
+    //let rom_path = "roms/2-ibm-logo.ch8";
     //let rom_path = "roms/test_opcode.ch8";
-    //let rom_path = "roms/bc_test.ch8";
+    let rom_path = "roms/bc_test.ch8";
     load_rom(&mut state, rom_path);
-    let mut game_window = GameWindow::new(screen_config);
+    let mut game_window = GameWindow::new(&sdl_context, screen_config);
     interpreter::game_loop(&mut state, &mut game_window);
 }
 

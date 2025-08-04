@@ -16,18 +16,15 @@ pub fn game_loop(state: &mut State, game_window: &mut GameWindow) {
         let (byte1, byte2) = fetch(state);
         let instruction = decode(byte1, byte2);
         execute(instruction, state);
-        game_window.update(&state.screen);
+        game_window.update(&state);
         std::thread::sleep(Duration::new(0, 100_000_000));
     }
 }
 
 fn fetch(state: &mut State) -> (u8, u8) {
     let pc = state.program_counter as usize;
-    if pc >= state.ram.len() {
-        panic!("Program counter overflowed ram")
-    }
     state.program_counter += 2;
-    (state.ram[pc], state.ram[pc + 1])
+    state.read_ram_16(pc).unwrap()
 }
 
 fn decode(byte1: u8, byte2: u8) -> Instruction {
@@ -83,6 +80,7 @@ fn execute(instruction: Instruction, state: &mut State) {
         Instruction::DecimalConversion(rx) => decimal_conversion(state, rx),
         Instruction::StoreRegisters(rx) => memory_copy(state, rx, true),
         Instruction::LoadRegisters(rx) => memory_copy(state, rx, false),
+        Instruction::Ignored => (), // pass
         Instruction::Unknown(opcode, value) => panic!("Unkown instruction {:#X} with value {}", opcode, value),
     }
 }
