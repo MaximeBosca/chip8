@@ -1,6 +1,3 @@
-use std::fmt::{format, Display};
-use crate::state::State;
-
 #[derive(Debug)]
 pub enum Instruction {
     ClearScreen,
@@ -26,7 +23,7 @@ pub enum Instruction {
     DecimalConversion(usize),
     StoreRegisters(usize),
     LoadRegisters(usize),
-    Ignored,
+    System,
     Unknown(u8, u16),
 }
 
@@ -79,7 +76,7 @@ fn opcode_0(opcode: u8, nn: u8, nnn: u16) -> Instruction {
     match nn {
         0xE0 => Instruction::ClearScreen,
         0xEE => Instruction::SubroutineReturn,
-        _ => Instruction::Ignored,
+        _ => Instruction::System,
     }
 }
 

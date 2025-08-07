@@ -80,7 +80,7 @@ fn execute(instruction: Instruction, state: &mut State) {
         Instruction::DecimalConversion(rx) => decimal_conversion(state, rx),
         Instruction::StoreRegisters(rx) => memory_copy(state, rx, true),
         Instruction::LoadRegisters(rx) => memory_copy(state, rx, false),
-        Instruction::Ignored => (), // pass
+        Instruction::System => (), // pass
         Instruction::Unknown(opcode, value) => panic!("Unkown instruction {:#X} with value {}", opcode, value),
     }
 }

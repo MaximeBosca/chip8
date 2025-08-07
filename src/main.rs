@@ -42,8 +42,8 @@ fn main() {
     let mut state = State::new(&screen_config);
     load_font(&mut state, FONT);
     //let rom_path = "roms/2-ibm-logo.ch8";
-    //let rom_path = "roms/test_opcode.ch8";
-    let rom_path = "roms/bc_test.ch8";
+    let rom_path = "roms/test_opcode.ch8";
+    //let rom_path = "roms/bc_test.ch8";
     load_rom(&mut state, rom_path);
     let mut game_window = GameWindow::new(&sdl_context, screen_config);
     interpreter::game_loop(&mut state, &mut game_window);

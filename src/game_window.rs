@@ -10,9 +10,11 @@ use crate::state::State;
 
 mod instruction_writer;
 mod registers_writer;
+mod controls_writer;
+mod stack_writer;
 
-const HEADER_FONT_SIZE: f32 = 84.0;
-const TEXT_FONT_SIZE: f32 = 56.0;
+const HEADER_FONT_SIZE: f32 = 64.0;
+const TEXT_FONT_SIZE: f32 = 48.0;
 
 struct ScreenManager {
     screen_config: ScreenConfig,
@@ -28,6 +30,7 @@ pub struct GameWindow<'a> {
     instructions_panel: Panel,
     registers_panel: Panel,
     index_panel: Panel,
+    stack_panel: Panel,
     controls_panel: Panel,
 }
 
@@ -69,6 +72,11 @@ impl GameWindow<'_> {
                                          0,
                                          window_width / 4,
                                          0);
+        let stack_panel = Panel::new(PanelType::Stack,
+                                     game_panel.boundaries.right(),
+                                     0,
+                                     window_width / 4,
+                                     0);
         let controls_panel = Panel::new(PanelType::Controls,
                                         instructions_panel.boundaries.right(),
                                         game_panel.boundaries.bottom(),
@@ -91,6 +99,7 @@ impl GameWindow<'_> {
             instructions_panel,
             registers_panel,
             index_panel,
+            stack_panel,
             controls_panel,
         }
     }
@@ -102,6 +111,7 @@ impl GameWindow<'_> {
         self.draw_instructions(state);
         self.draw_registers(state);
         self.draw_index(state);
+        self.draw_stack(state);
         self.draw_layout(state);
         self.update_game_screen(state);
         self.screen_manager.canvas.present();
@@ -109,6 +119,7 @@ impl GameWindow<'_> {
 
     fn draw_controls(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.controls_panel.clone());
+        self.screen_manager.write_text(controls_writer::write_controls(), &self.text_font, remaining_rect);
     }
 
     fn draw_instructions(&mut self, state: &State) {
@@ -128,7 +139,8 @@ impl GameWindow<'_> {
             FRect::from(self.instructions_panel.boundaries),
             FRect::from(self.registers_panel.boundaries),
             FRect::from(self.controls_panel.boundaries),
-            FRect::from(self.index_panel.boundaries)]).unwrap();
+            FRect::from(self.index_panel.boundaries),
+            FRect::from(self.stack_panel.boundaries)]).unwrap();
     }
 
     fn update_game_screen(&mut self, state: &State) {
@@ -143,7 +155,8 @@ impl GameWindow<'_> {
 
     fn write_header(&mut self, panel: Panel) -> Rect {
         let mut drawn_rect = self.screen_manager.write_text(panel.header, &self.header_font, panel.boundaries);
-        drawn_rect.x = panel.boundaries.left();
+        drawn_rect.set_x(panel.boundaries.left()) ;
+        drawn_rect.set_width(panel.boundaries.width()) ;
         self.screen_manager.canvas.set_draw_color(self.screen_manager.screen_config.on_color);
         self.screen_manager.canvas.draw_rect(FRect::from(drawn_rect)).unwrap();
         subtract_rect(panel.boundaries, drawn_rect, Direction::Up)
@@ -151,7 +164,13 @@ impl GameWindow<'_> {
 
     fn draw_index(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.index_panel.clone());
-        self.screen_manager.write_text(write_index(state), &self.text_font, remaining_rect);
+        let drawn_rect = self.screen_manager.write_text(write_index(state), &self.text_font, remaining_rect);
+        self.stack_panel.boundaries = subtract_rect(self.index_panel.boundaries, drawn_rect, Direction::Up);
+    }
+
+    fn draw_stack(&mut self, state: &State) {
+        let remaining_rect = self.write_header(self.stack_panel.clone());
+        self.screen_manager.write_text(stack_writer::write_stack(state), &self.text_font, remaining_rect);
     }
 }
 
@@ -216,12 +235,12 @@ enum Direction {
 
 impl ScreenManager {
     fn write_text(&mut self, text: String, font: &Font, dst: Rect) -> Rect {
+        let mut draw_rect = self.apply_lateral_margin(&dst, true);
         let rendered_text = render_text(font,
                                         self.screen_config.on_color,
                                         self.screen_config.off_color,
                                         text.as_str(),
-                                        dst.width() as i32);
-        let mut draw_rect = self.apply_lateral_margin(&dst, true);
+                                        draw_rect.width() as i32);
         draw_text(rendered_text,
                   &mut draw_rect,
                   &self.texture_creator,
@@ -237,10 +256,11 @@ impl ScreenManager {
     }
 }
 
-const REGISTERS_HEADER: &str = " REGISTERS ";
-const CONTROLS_HEADER: &str = " CONTROLS ";
-const INSTRUCTIONS_HEADER: &str = " INSTRUCTIONS ";
-const INDEX_HEADER: &str = " INDEX ";
+const REGISTERS_HEADER: &str = "REGISTERS";
+const CONTROLS_HEADER: &str = "CONTROLS";
+const INSTRUCTIONS_HEADER: &str = "INSTRUCTIONS";
+const INDEX_HEADER: &str = "INDEX";
+const STACK_HEADER: &str = "STACK";
 
 enum PanelType {
     Instructions,
@@ -248,6 +268,7 @@ enum PanelType {
     Controls,
     Game,
     Index,
+    Stack,
 }
 
 #[derive(Clone)]
@@ -263,6 +284,7 @@ impl Panel {
             PanelType::Registers => REGISTERS_HEADER.to_string(),
             PanelType::Controls => CONTROLS_HEADER.to_string(),
             PanelType::Index => INDEX_HEADER.to_string(),
+            PanelType::Stack => STACK_HEADER.to_string(),
             PanelType::Game => "".to_string(),
         };
         Self {

@@ -3,7 +3,7 @@ use crate::instruction::{Instruction, Operator};
 use crate::state::State;
 
 pub fn write_instructions(state: &State) -> String {
-    (0usize..16usize)
+    (0usize..32usize)
         .map(|index| state.program_counter as usize + 2 * index)
         .filter_map(|addr| read_printable_instruction(state, addr))
         .map(|instruction| instruction.print(state))
@@ -23,7 +23,7 @@ pub struct PrintableInstruction {
 
 impl PrintableInstruction {
     pub fn print(&self, state: &State) -> String {
-        format(format_args!("{:#03X} : {}", self.address, print_instruction(&self.instruction)))
+        format(format_args!("{:#03X}: {}", self.address, print_instruction(&self.instruction)))
     }
 
     pub fn new(address: usize, bytes: (u8, u8)) -> Self {
@@ -42,7 +42,7 @@ impl PrintableInstruction {
 /// formatted depending on their type.
 pub fn print_instruction(instruction: &Instruction) -> String {
     match instruction {
-        Instruction::Ignored => "IGN".to_string(),
+        Instruction::System => "SYS".to_string(),
         Instruction::ClearScreen => "CLR".to_string(),
         Instruction::Jump(address) => format!("JUMP {:#03X}", address),
         Instruction::SubroutineCall(address) => format!("CALL {:#03X}", address),
