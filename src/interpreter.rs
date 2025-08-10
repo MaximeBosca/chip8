@@ -54,7 +54,7 @@ impl Interpreter {
             }),
             Instruction::Draw(rx, ry, sprite_height) =>
                 draw(state, rx, ry, sprite_height),
-            Instruction::SkipIfKey(rx, if_pressed) => panic!("deal with inputs !"),
+            Instruction::SkipIfKey(rx, if_pressed) => skip_key_press(state, rx, if_pressed, pressed_keys),
             Instruction::ReadDelayTimer(rx) => state.set_register(rx, state.delay_timer),
             Instruction::SetDelayTimer(rx) => state.delay_timer = state.register(rx),
             Instruction::SetSoundTimer(rx) => state.sound_timer = state.register(rx),
@@ -65,7 +65,7 @@ impl Interpreter {
                     state.set_vf(1);
                 }
             }
-            Instruction::GetKey(rx) => panic!("deal with inputs !"),
+            Instruction::GetKey(rx) => await_key_press(state, rx, pressed_keys),
             Instruction::FontCharacter(rx) =>
                 state.index = self.font_address + (state.register(rx) & 0x0F) as u16 * 5,
             Instruction::DecimalConversion(rx) => decimal_conversion(state, rx),
@@ -124,6 +124,26 @@ impl Interpreter {
             }
         }
     }
+}
+
+fn await_key_press(state: &mut State, rx: usize, pressed_keys: &Vec<u8>) {
+    let found = find_key(state, rx, pressed_keys);
+    if !found {
+        state.program_counter -= 2;
+    }
+}
+
+fn skip_key_press(state: &mut State, rx: usize, if_pressed: bool, pressed_keys: &Vec<u8>) {
+    let found = find_key(state, rx, pressed_keys);
+    if found == if_pressed {
+        state.program_counter += 2
+    }
+}
+
+fn find_key(state: &State, rx: usize, pressed_keys: &Vec<u8>) -> bool {
+    pressed_keys.iter()
+        .filter(|key| **key == state.register(rx))
+        .count() != 0
 }
 
 fn fetch(state: &mut State) -> (u8, u8) {
