@@ -17,12 +17,12 @@ impl Interpreter {
             font_address,
         }
     }
-    pub fn game_step(&self, state: &mut State) {
+    pub fn game_step(&self, state: &mut State, pressed_keys: &Vec<u8>) {
         let (byte1, byte2) = fetch(state);
         let instruction = decode(byte1, byte2);
-        self.execute(instruction, state);
+        self.execute(instruction, state, pressed_keys);
     }
-    fn execute(&self, instruction: Instruction, state: &mut State) {
+    fn execute(&self, instruction: Instruction, state: &mut State, pressed_keys: &Vec<u8>) {
         match instruction {
             Instruction::ClearScreen => state.screen.clear(),
             Instruction::Jump(address) => state.program_counter = address,
@@ -162,7 +162,7 @@ fn subtract(x: u8, y: u8) -> (u8, u8) {
     if x >= y {
         return (x - y, 1)
     }
-    (y - x, 0)
+    (255 - y + x + 1, 0)
 }
 
 fn draw(state: &mut State, rx: usize, ry: usize, sprite_height: u8) {

@@ -2,9 +2,7 @@ extern crate sdl3;
 
 use std::fs;
 use std::io::Read;
-use crate::game_window::GameWindow;
-use crate::runner::Runner;
-use crate::screen_config::ScreenConfig;
+use crate::runner::{ExitStatus, Runner};
 use crate::state::State;
 
 mod screen;
@@ -17,11 +15,18 @@ mod screen_config;
 mod runner;
 
 fn main() {
-    //let rom_path = "roms/2-ibm-logo.ch8";
-    let rom_path = "roms/test_opcode.ch8";
-    //let rom_path = "roms/bc_test.ch8";
-    let mut runner = Runner::init(rom_path);
-    runner.run();
+    loop {
+        //let rom_path = "roms/2-ibm-logo.ch8";
+        let rom_path = "roms/test_opcode.ch8";
+        //let rom_path = "roms/bc_test.ch8";
+        let mut runner = Runner::init(rom_path);
+        let status = runner.run();
+        match status {
+            ExitStatus::Quit => break,
+            ExitStatus::Reset => continue,
+            ExitStatus::Error(message) => println!("Error running the emulator : {}", message),
+        }
+    }
 }
 
 fn load_rom(state: &mut State, path: &str) {
