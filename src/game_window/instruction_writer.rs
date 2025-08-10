@@ -84,15 +84,12 @@ fn print_arithmetic(x: &usize, y: &usize, operator: &Operator) -> String {
         Operator::BinaryXor => "XOR",
         Operator::Add => "ADD",
         Operator::Subtract => "SUB",
-        Operator::SubtractInverse => "SUB",
+        Operator::SubtractInverse => "SUBI",
         Operator::ShiftL => "SHL",
         Operator::ShiftR => "SHR",
         Operator::Unknown(_) => "UKN"
     };
-    match operator {
-        Operator::SubtractInverse => format!("{} V{:X} V{:X}", cmd, y, x),
-        _ => format!("{} V{:X} V{:X}", cmd, x, y)
-    }
+    format!("{} V{:X} V{:X}", cmd, x, y)
 }
 
 fn print_conditional_skip(x: &usize, v2: Arguments, skip_equal: bool) -> String {
