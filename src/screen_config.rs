@@ -8,6 +8,7 @@ const MARGIN: usize = 1;
 pub const COLOR_BLACK: Color = Color::BLACK;
 pub const COLOR_WHITE: Color = Color::WHITE;
 pub const COLOR_GREEN: Color = Color::GREEN;
+pub const COLOR_RED: Color = Color::RED;
 
 pub const PIXEL_MASKS: PixelMasks = PixelMasks {
     bpp: 32,
@@ -27,9 +28,10 @@ pub struct ScreenConfig {
     pub pixel_format : PixelFormat,
     pub on_color: Color,
     pub off_color: Color,
+    pub alt_color: Color,
 }
 impl ScreenConfig {
-    pub fn new(width: usize, height: usize, scale: usize, margin: usize, pixel_masks: PixelMasks, on_color: Color, off_color: Color) -> Self {
+    pub fn new(width: usize, height: usize, scale: usize, margin: usize, pixel_masks: PixelMasks, on_color: Color, off_color: Color, alt_color: Color) -> Self {
         ScreenConfig {
             width,
             height,
@@ -39,6 +41,7 @@ impl ScreenConfig {
             pixel_format: PixelFormat::from_masks(pixel_masks),
             on_color,
             off_color,
+            alt_color,
         }
     }
     pub fn default() -> Self {
@@ -48,7 +51,8 @@ impl ScreenConfig {
                   MARGIN,
                   PIXEL_MASKS,
                   COLOR_GREEN,
-                  COLOR_BLACK)
+                  COLOR_BLACK,
+                  COLOR_RED)
     }
     pub fn pitch(&self) -> usize {
         self.width * self.bytes_per_pixel

@@ -1,3 +1,4 @@
+use std::cmp::max;
 use sdl3::pixels::Color;
 use sdl3::rect::Rect;
 use sdl3::render::{create_renderer, Canvas, FRect, ScaleMode, TextureCreator};
@@ -5,6 +6,8 @@ use sdl3::Sdl;
 use sdl3::surface::Surface;
 use sdl3::ttf::Font;
 use sdl3::video::{Window, WindowContext};
+use crate::game_window::controls_writer::game_pad;
+use crate::game_window::timer_writer::write_timer;
 use crate::screen_config::ScreenConfig;
 use crate::state::State;
 
@@ -12,6 +15,7 @@ mod instruction_writer;
 mod registers_writer;
 mod controls_writer;
 mod stack_writer;
+mod timer_writer;
 
 const HEADER_FONT_SIZE: f32 = 64.0;
 const TEXT_FONT_SIZE: f32 = 48.0;
@@ -30,6 +34,7 @@ pub struct GameWindow<'a> {
     instructions_panel: Panel,
     registers_panel: Panel,
     index_panel: Panel,
+    timer_panel: Panel,
     stack_panel: Panel,
     controls_panel: Panel,
 }
@@ -72,6 +77,11 @@ impl GameWindow<'_> {
                                          0,
                                          window_width / 4,
                                          0);
+        let timer_panel = Panel::new(PanelType::Timer,
+                                     game_panel.boundaries.right(),
+                                     0,
+                                     window_width / 4,
+                                     0);
         let stack_panel = Panel::new(PanelType::Stack,
                                      game_panel.boundaries.right(),
                                      0,
@@ -99,6 +109,7 @@ impl GameWindow<'_> {
             instructions_panel,
             registers_panel,
             index_panel,
+            timer_panel,
             stack_panel,
             controls_panel,
         }
@@ -111,6 +122,7 @@ impl GameWindow<'_> {
         self.draw_instructions(state);
         self.draw_registers(state);
         self.draw_index(state);
+        self.draw_timer(state);
         self.draw_stack(state);
         self.draw_layout(state);
         self.update_game_screen(state);
@@ -119,7 +131,12 @@ impl GameWindow<'_> {
 
     fn draw_controls(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.controls_panel.clone());
-        self.screen_manager.write_text(controls_writer::write_controls(), &self.text_font, remaining_rect);
+        let drawn_rect = self.screen_manager
+            .write_text(controls_writer::write_fn_controls(), &self.text_font, remaining_rect);
+        let remaining_rect = subtract_rect(remaining_rect, drawn_rect, Direction::Up);
+        let remaining = self.draw_pressed_keys(state, remaining_rect);
+        self.screen_manager
+            .write_text(controls_writer::write_game_controls(), &self.text_font, remaining);
     }
 
     fn draw_instructions(&mut self, state: &State) {
@@ -165,12 +182,55 @@ impl GameWindow<'_> {
     fn draw_index(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.index_panel.clone());
         let drawn_rect = self.screen_manager.write_text(write_index(state), &self.text_font, remaining_rect);
-        self.stack_panel.boundaries = subtract_rect(self.index_panel.boundaries, drawn_rect, Direction::Up);
+        self.timer_panel.boundaries = subtract_rect(self.index_panel.boundaries, drawn_rect, Direction::Up);
     }
 
+    fn draw_timer(&mut self, state: &State) {
+        let remaining_rect = self.write_header(self.timer_panel.clone());
+        let drawn_rect = self.screen_manager.write_text(write_timer(state), &self.text_font, remaining_rect);
+        self.stack_panel.boundaries = subtract_rect(self.timer_panel.boundaries, drawn_rect, Direction::Up);
+    }
     fn draw_stack(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.stack_panel.clone());
         self.screen_manager.write_text(stack_writer::write_stack(state), &self.text_font, remaining_rect);
+    }
+
+    fn draw_pressed_keys(&mut self, state: &State, rect: Rect) -> Rect{
+        let drawn = self.screen_manager
+            .write_text(controls_writer::write_hyphen_line(), &self.text_font, rect);
+        let mut remaining_rect = subtract_rect(rect, drawn, Direction::Up);
+        let mut drawn = Rect::new(rect.x, rect.y, 0, 0);
+        for line in game_pad() {
+            let drawn_rect = self.draw_line(line, state, remaining_rect);
+            drawn = add_rect(drawn_rect, drawn, Direction::Up);
+            remaining_rect = subtract_rect(remaining_rect, drawn_rect, Direction::Up);
+        }
+        self.screen_manager.write_text(controls_writer::write_hyphen_line(), &self.text_font, remaining_rect);
+        subtract_rect(rect, drawn, Direction::Left)
+    }
+
+    fn draw_line(&mut self, line: [u8; 4], state: &State, rect: Rect) -> Rect {
+        let mut drawn_rect = self.screen_manager
+            .write_text("|".to_string(), &self.text_font, rect);
+        let mut remaining_rect = subtract_rect(rect, drawn_rect, Direction::Left);
+        for key in line {
+            let color =
+                if state.keypad.is_pressed(key) {
+                    self.screen_manager.screen_config.alt_color
+                } else {
+                    self.screen_manager.screen_config.on_color
+                };
+            let drawn = self.screen_manager.write_text_color(format!("{:X}", key),
+                                                             &self.text_font,
+                                                             remaining_rect,
+                                                             color,
+                                                             self.screen_manager.screen_config.off_color);
+            remaining_rect = subtract_rect(remaining_rect, drawn, Direction::Left);
+            drawn_rect = add_rect(drawn, drawn_rect, Direction::Right);
+        }
+        self.screen_manager
+            .write_text("|".to_string(), &self.text_font, remaining_rect);
+        drawn_rect
     }
 }
 
@@ -226,6 +286,26 @@ fn subtract_rect(starting_rect: Rect, drawn_rect: Rect, direction: Direction) ->
     Rect::new(x, y, width, height)
 }
 
+fn add_rect(start: Rect, drawn: Rect, direction: Direction) -> Rect {
+    let x = match direction {
+        Direction::Left => start.left() - drawn.w,
+        _ => start.left(),
+    };
+    let y = match direction {
+        Direction::Up => start.top() - drawn.h,
+        _ => start.top(),
+    };
+    let width = match direction {
+        Direction::Left | Direction::Right => start.width() + drawn.width(),
+        Direction::Up | Direction::Down => max(start.width(), drawn.width()),
+    };
+    let height = match direction {
+        Direction::Up | Direction::Down => start.height() + drawn.height(),
+        Direction::Left | Direction::Right => max(start.height(), drawn.height()),
+    };
+    Rect::new(x, y, width, height)
+}
+
 enum Direction {
     Up,
     Down,
@@ -235,10 +315,13 @@ enum Direction {
 
 impl ScreenManager {
     fn write_text(&mut self, text: String, font: &Font, dst: Rect) -> Rect {
+        self.write_text_color(text, font, dst, self.screen_config.on_color, self.screen_config.off_color)
+    }
+    fn write_text_color(&mut self, text: String, font: &Font, dst: Rect, on_color: Color, off_color: Color) -> Rect {
         let mut draw_rect = self.apply_lateral_margin(&dst, true);
         let rendered_text = render_text(font,
-                                        self.screen_config.on_color,
-                                        self.screen_config.off_color,
+                                        on_color,
+                                        off_color,
                                         text.as_str(),
                                         draw_rect.width() as i32);
         draw_text(rendered_text,
@@ -261,6 +344,7 @@ const CONTROLS_HEADER: &str = "CONTROLS";
 const INSTRUCTIONS_HEADER: &str = "INSTRUCTIONS";
 const INDEX_HEADER: &str = "INDEX";
 const STACK_HEADER: &str = "STACK";
+const TIMER_HEADER: &str = "TIMERS";
 
 enum PanelType {
     Instructions,
@@ -269,6 +353,7 @@ enum PanelType {
     Game,
     Index,
     Stack,
+    Timer,
 }
 
 #[derive(Clone)]
@@ -285,6 +370,7 @@ impl Panel {
             PanelType::Controls => CONTROLS_HEADER.to_string(),
             PanelType::Index => INDEX_HEADER.to_string(),
             PanelType::Stack => STACK_HEADER.to_string(),
+            PanelType::Timer => TIMER_HEADER.to_string(),
             PanelType::Game => "".to_string(),
         };
         Self {
