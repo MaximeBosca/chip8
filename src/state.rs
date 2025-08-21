@@ -1,3 +1,4 @@
+use crate::keypad::Keypad;
 use crate::screen::Screen;
 use crate::screen_config::ScreenConfig;
 use crate::stack::Stack;
@@ -13,7 +14,17 @@ pub struct State {
     pub sound_timer: u8,
     registers: [u8; REGISTERS_SIZE],
     pub screen: Screen,
+    pub keypad: Keypad,
 }
+
+impl State {
+    pub(crate) fn decrease_timers(&mut self) {
+
+        self.delay_timer -= if self.delay_timer > 0 { 1 } else { 0 };
+        self.sound_timer -= if self.sound_timer > 0 { 1 } else { 0 };
+    }
+}
+
 impl State {
     pub fn new(screen_config: &ScreenConfig) -> Self {
         Self {
@@ -25,6 +36,7 @@ impl State {
             sound_timer: 0,
             registers: [0; REGISTERS_SIZE],
             screen: Screen::new(screen_config),
+            keypad: Keypad::new(),
         }
     }
     pub fn register(self: &Self, index :usize) -> u8 {

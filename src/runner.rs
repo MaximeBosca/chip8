@@ -1,10 +1,9 @@
-use std::result;
-use std::time::Duration;
-use sdl3::{EventPump, Sdl};
+use std::time::{Duration, SystemTime};
+use sdl3::{EventPump};
 use sdl3::event::Event;
-use sdl3::keyboard::{Keycode, Scancode};
+use sdl3::keyboard::{Scancode};
 use crate::game_window::GameWindow;
-use crate::{interpreter, load_rom};
+use crate::{load_rom};
 use crate::interpreter::{Interpreter, InterpreterVariant};
 use crate::screen_config::ScreenConfig;
 use crate::state::State;
@@ -31,6 +30,9 @@ const FONT: [[u8; 5]; 16] = [
 const FONT_ADDRESS: u16 = 0x050;
 const INTERPRETER_VARIANT: InterpreterVariant = InterpreterVariant::Chip48;
 
+const TICK_INTERVAL: Duration = Duration::new(1/700, 0);
+const TIMER_INTERVAL: Duration = Duration::new(1/60,0);
+
 pub enum ExitStatus {
     Quit,
     Reset,
@@ -48,6 +50,7 @@ pub struct Runner<'a> {
     interpreter: Interpreter,
     event_pump: EventPump,
     run_state: RunState,
+    next_timer_tick: Duration,
 }
 
 impl<'a> Runner<'a> {
@@ -68,44 +71,55 @@ impl<'a> Runner<'a> {
             interpreter,
             event_pump,
             run_state,
+            next_timer_tick: Duration::new(0, 0),
         }
     }
     pub fn run(&mut self) -> ExitStatus {
         'running: loop {
-            let mut pressed_keys : Vec<u8> = Vec::new();
+            let start = SystemTime::now();
             for event in self.event_pump.poll_iter() {
                 match event {
                     Event::KeyDown{scancode: Some(key),..} => {
-                        let result = handle_key_press(key, &mut self.run_state, &mut pressed_keys);
+                        let result = handle_key_press(&mut self.run_state, key);
                         if let Some(status) = result {
                             return status;
                         }
+                        game_key_down(&mut self.state, key);
+                    },
+                    Event::KeyUp{scancode: Some(key),..} => {
+                        game_key_up(&mut self.state, key);
                     },
                     Event::Quit { .. } => {return ExitStatus::Quit},
                     _ => {},
                 }
             }
-
             if self.run_state.should_continue() {
-                self.interpreter.game_step(&mut self.state, &pressed_keys);
+                self.interpreter.game_step(&mut self.state);
             }
             self.game_window.update(&self.state);
-            std::thread::sleep(Duration::new(0, 100_000_000));
+            self.sleep(start);
+
         }
     }
-}
 
-fn load_font(state: &mut State, font: [[u8; 5]; 16], font_addr: u16) {
-    let mut index = font_addr as usize;
-    for character in font.iter() {
-        let end = index + character.len();
-        state.ram[index..end].copy_from_slice(character);
-        index = end;
+    fn sleep(&mut self, start: SystemTime) {
+        let elapsed = start.elapsed().unwrap_or(Duration::new(0, 0));
+        let to_sleep = TICK_INTERVAL
+            .checked_sub(elapsed)
+            .unwrap_or(Duration::new(0, 0));
+        self.next_timer_tick = self.next_timer_tick
+            .checked_sub(elapsed)
+            .unwrap_or_else(|| self.decrease_timer());
+        std::thread::sleep(to_sleep);
+    }
+
+    fn decrease_timer(&mut self) -> Duration {
+        self.state.decrease_timers();
+        TIMER_INTERVAL.clone()
     }
 }
-
-fn handle_key_press(scancode: Scancode, run_state: &mut RunState, pressed_keys: &mut Vec<u8>)
-    -> Option<ExitStatus> {
+fn handle_key_press(run_state: &mut RunState, scancode: Scancode)
+                    -> Option<ExitStatus> {
     match scancode {
         Scancode::F1 => {
             run_state.running = !run_state.running;
@@ -119,14 +133,31 @@ fn handle_key_press(scancode: Scancode, run_state: &mut RunState, pressed_keys: 
         Scancode::F4 => {
             return Some(ExitStatus::Quit)
         }
-        _ => {
-            let key = game_key(scancode);
-            if let Some(u8_key) = key {
-                pressed_keys.push(u8_key);
-            }
-        }
+        _ => {}
     }
     None
+}
+
+fn game_key_down(state: &mut State, code: Scancode) {
+    let result = game_key(code);
+    if let Some(key) = result {
+        state.keypad.press_key(key);
+    }
+}
+fn game_key_up(state: &mut State, code: Scancode) {
+    let result = game_key(code);
+    if let Some(key) = result {
+        state.keypad.release_key(key);
+    }
+}
+
+fn load_font(state: &mut State, font: [[u8; 5]; 16], font_addr: u16) {
+    let mut index = font_addr as usize;
+    for character in font.iter() {
+        let end = index + character.len();
+        state.ram[index..end].copy_from_slice(character);
+        index = end;
+    }
 }
 
 fn game_key(scancode: Scancode) -> Option<u8> {
