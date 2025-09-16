@@ -1,9 +1,10 @@
 use std::time::{Duration, SystemTime};
-use sdl3::{EventPump};
+use sdl3::{AudioSubsystem, EventPump};
 use sdl3::event::Event;
 use sdl3::keyboard::{Scancode};
 use crate::game_window::GameWindow;
 use crate::{load_rom};
+use crate::audio_player::AudioPlayer;
 use crate::interpreter::{Interpreter, InterpreterVariant};
 use crate::screen_config::ScreenConfig;
 use crate::state::State;
@@ -51,6 +52,7 @@ pub struct Runner<'a> {
     event_pump: EventPump,
     run_state: RunState,
     next_timer_tick: Duration,
+    audio_player: AudioPlayer
 }
 
 impl<'a> Runner<'a> {
@@ -63,6 +65,7 @@ impl<'a> Runner<'a> {
         load_font(&mut state, FONT, font_address);
         let game_window = GameWindow::new(&sdl_context, screen_config);
         let interpreter = Interpreter::new(INTERPRETER_VARIANT, font_address);
+        let audio_player = AudioPlayer::new(&sdl_context);
         let event_pump = sdl_context.event_pump().unwrap();
         let run_state = RunState { running: false, step: false };
         Self {
@@ -72,6 +75,7 @@ impl<'a> Runner<'a> {
             event_pump,
             run_state,
             next_timer_tick: Duration::new(0, 0),
+            audio_player
         }
     }
     pub fn run(&mut self) -> ExitStatus {
@@ -93,29 +97,42 @@ impl<'a> Runner<'a> {
                     _ => {},
                 }
             }
+            let mut should_decrement = false;
             if self.run_state.should_continue() {
                 self.interpreter.game_step(&mut self.state);
+                should_decrement = true;
             }
+            self.play_sound(should_decrement);
             self.game_window.update(&self.state);
-            self.sleep(start);
+            self.sleep(start, should_decrement);
 
         }
     }
 
-    fn sleep(&mut self, start: SystemTime) {
+    fn sleep(&mut self, start: SystemTime, should_decrement: bool) {
         let elapsed = start.elapsed().unwrap_or(Duration::new(0, 0));
         let to_sleep = TICK_INTERVAL
             .checked_sub(elapsed)
             .unwrap_or(Duration::new(0, 0));
         self.next_timer_tick = self.next_timer_tick
             .checked_sub(elapsed)
-            .unwrap_or_else(|| self.decrease_timer());
+            .unwrap_or_else(|| self.decrease_timer(should_decrement));
         std::thread::sleep(to_sleep);
     }
 
-    fn decrease_timer(&mut self) -> Duration {
-        self.state.decrease_timers();
+    fn decrease_timer(&mut self, should_decrement: bool) -> Duration {
+        if should_decrement {
+            self.state.decrease_timers();
+        }
         TIMER_INTERVAL.clone()
+    }
+
+    fn play_sound(&self, is_playing: bool) {
+        if !(is_playing) || self.state.sound_timer == 0 {
+            self.audio_player.pause_sound()
+        } else {
+            self.audio_player.play_sound()
+        }
     }
 }
 fn handle_key_press(run_state: &mut RunState, scancode: Scancode)

@@ -1,6 +1,5 @@
 use crate::state::State;
 
-//TODO : Once step by step mode available, check and fix stack display
 pub fn write_stack(state: &State) -> String {
     state.stack.read_all()
         .enumerate()

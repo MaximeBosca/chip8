@@ -14,14 +14,13 @@ mod interpreter;
 mod screen_config;
 mod runner;
 mod keypad;
+mod audio_player;
 
 fn main() {
     loop {
-        //let rom_path = "roms/2-ibm-logo.ch8";
-        //let rom_path = "roms/test_opcode.ch8";
-        //let rom_path = "roms/bc_test.ch8";
+        // Note : Should change this and use some kind of file picker, but I'm not really feeling like it :(
+        // change rom_path here to select the rom you want to use
         let rom_path = "roms/Pong.ch8";
-        //let rom_path = "roms/Pong (1 player).ch8";
         let mut runner = Runner::init(rom_path);
         let status = runner.run();
         match status {
