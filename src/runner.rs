@@ -1,13 +1,15 @@
-use std::time::{Duration, SystemTime};
-use sdl3::{AudioSubsystem, EventPump};
-use sdl3::event::Event;
-use sdl3::keyboard::{Scancode};
-use crate::game_window::GameWindow;
-use crate::{load_rom};
+use crate::Config;
 use crate::audio_player::AudioPlayer;
+use crate::game_window::GameWindow;
 use crate::interpreter::{Interpreter, InterpreterVariant};
-use crate::screen_config::ScreenConfig;
+use crate::screen_config::{MARGIN, PIXEL_MASKS, ScreenConfig};
 use crate::state::State;
+use sdl3::EventPump;
+use sdl3::event::Event;
+use sdl3::keyboard::Scancode;
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
+use std::{fs, io::Read};
 
 const FONT: [[u8; 5]; 16] = [
     [0xf0, 0x90, 0x90, 0x90, 0xf0], // 0
@@ -25,19 +27,19 @@ const FONT: [[u8; 5]; 16] = [
     [0xf0, 0x80, 0x80, 0x80, 0xf0], // C
     [0xe0, 0x90, 0x90, 0x90, 0xe0], // D
     [0xf0, 0x80, 0xf0, 0x80, 0xf0], // E
-    [0xf0, 0x80, 0xf0, 0x80, 0x80]  // F
+    [0xf0, 0x80, 0xf0, 0x80, 0x80], // F
 ];
 
 const FONT_ADDRESS: u16 = 0x050;
-const INTERPRETER_VARIANT: InterpreterVariant = InterpreterVariant::Chip48;
+pub const INTERPRETER_VARIANT: InterpreterVariant = InterpreterVariant::Chip48;
 
-const TICK_INTERVAL: Duration = Duration::new(1/700, 0);
-const TIMER_INTERVAL: Duration = Duration::new(1/60,0);
+const TICK_INTERVAL: Duration = Duration::new(1 / 700, 0);
+const TIMER_INTERVAL: Duration = Duration::new(1 / 60, 0);
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExitStatus {
     Quit,
     Reset,
-    Error(String),
 }
 
 struct RunState {
@@ -45,29 +47,46 @@ struct RunState {
     step: bool,
 }
 
+fn load_rom(state: &mut State, path: PathBuf) {
+    let mut f = fs::File::open(path).expect("File not found");
+    let _ = f
+        .read(&mut state.ram[0x200..])
+        .expect("Error loading ROM into RAM");
+    state.program_counter = 0x200u16;
+}
+
 pub struct Runner<'a> {
-    state: State,
+    audio_player: AudioPlayer,
+    event_pump: EventPump,
     game_window: GameWindow<'a>,
     interpreter: Interpreter,
-    event_pump: EventPump,
-    run_state: RunState,
     next_timer_tick: Duration,
-    audio_player: AudioPlayer
+    run_state: RunState,
+    state: State,
 }
 
 impl<'a> Runner<'a> {
-    pub fn init(rom_path : &str) -> Self {
-        let screen_config = ScreenConfig::default();
-        let sdl_context =  sdl3::init().unwrap();
+    pub fn init(config: Config) -> Self {
+        let screen_config = ScreenConfig::new(
+            config.dimensions,
+            config.screen_scale,
+            MARGIN,
+            PIXEL_MASKS,
+            config.colors,
+        );
+        let sdl_context = sdl3::init().unwrap();
         let mut state = State::new(&screen_config);
         let font_address = FONT_ADDRESS;
-        load_rom(&mut state, rom_path);
+        load_rom(&mut state, config.rom_path);
         load_font(&mut state, FONT, font_address);
         let game_window = GameWindow::new(&sdl_context, screen_config);
-        let interpreter = Interpreter::new(INTERPRETER_VARIANT, font_address);
+        let interpreter = Interpreter::new(config.ivariant, font_address);
         let audio_player = AudioPlayer::new(&sdl_context);
         let event_pump = sdl_context.event_pump().unwrap();
-        let run_state = RunState { running: false, step: false };
+        let run_state = RunState {
+            running: false,
+            step: false,
+        };
         Self {
             state,
             game_window,
@@ -75,26 +94,35 @@ impl<'a> Runner<'a> {
             event_pump,
             run_state,
             next_timer_tick: Duration::new(0, 0),
-            audio_player
+            audio_player,
         }
     }
-    pub fn run(&mut self) -> ExitStatus {
+    pub fn run(&mut self) {
         'running: loop {
             let start = SystemTime::now();
             for event in self.event_pump.poll_iter() {
                 match event {
-                    Event::KeyDown{scancode: Some(key),..} => {
+                    Event::KeyDown {
+                        scancode: Some(key),
+                        ..
+                    } => {
                         let result = handle_key_press(&mut self.run_state, key);
                         if let Some(status) = result {
-                            return status;
+                            match status {
+                                ExitStatus::Quit => break 'running,
+                                ExitStatus::Reset => continue 'running,
+                            }
                         }
                         game_key_down(&mut self.state, key);
-                    },
-                    Event::KeyUp{scancode: Some(key),..} => {
+                    }
+                    Event::KeyUp {
+                        scancode: Some(key),
+                        ..
+                    } => {
                         game_key_up(&mut self.state, key);
-                    },
-                    Event::Quit { .. } => {return ExitStatus::Quit},
-                    _ => {},
+                    }
+                    Event::Quit { .. } => break 'running,
+                    _ => {}
                 }
             }
             let mut should_decrement = false;
@@ -105,7 +133,6 @@ impl<'a> Runner<'a> {
             self.play_sound(should_decrement);
             self.game_window.update(&self.state);
             self.sleep(start, should_decrement);
-
         }
     }
 
@@ -114,7 +141,8 @@ impl<'a> Runner<'a> {
         let to_sleep = TICK_INTERVAL
             .checked_sub(elapsed)
             .unwrap_or(Duration::new(0, 0));
-        self.next_timer_tick = self.next_timer_tick
+        self.next_timer_tick = self
+            .next_timer_tick
             .checked_sub(elapsed)
             .unwrap_or_else(|| self.decrease_timer(should_decrement));
         std::thread::sleep(to_sleep);
@@ -124,19 +152,18 @@ impl<'a> Runner<'a> {
         if should_decrement {
             self.state.decrease_timers();
         }
-        TIMER_INTERVAL.clone()
+        TIMER_INTERVAL
     }
 
     fn play_sound(&self, is_playing: bool) {
-        if !(is_playing) || self.state.sound_timer == 0 {
+        if !is_playing || self.state.sound_timer == 0 {
             self.audio_player.pause_sound()
         } else {
             self.audio_player.play_sound()
         }
     }
 }
-fn handle_key_press(run_state: &mut RunState, scancode: Scancode)
-                    -> Option<ExitStatus> {
+fn handle_key_press(run_state: &mut RunState, scancode: Scancode) -> Option<ExitStatus> {
     match scancode {
         Scancode::F1 => {
             run_state.running = !run_state.running;
@@ -144,12 +171,8 @@ fn handle_key_press(run_state: &mut RunState, scancode: Scancode)
         Scancode::F2 => {
             run_state.step = true;
         }
-        Scancode::F3 => {
-            return Some(ExitStatus::Reset)
-        }
-        Scancode::F4 => {
-            return Some(ExitStatus::Quit)
-        }
+        Scancode::F3 => return Some(ExitStatus::Reset),
+        Scancode::F4 => return Some(ExitStatus::Quit),
         _ => {}
     }
     None
@@ -183,18 +206,18 @@ fn game_key(scancode: Scancode) -> Option<u8> {
         Scancode::_2 => Some(0x02),
         Scancode::_3 => Some(0x03),
         Scancode::_4 => Some(0x0C),
-        Scancode::Q  => Some(0x04),
-        Scancode::W  => Some(0x05),
-        Scancode::E  => Some(0x06),
-        Scancode::R  => Some(0x0D),
-        Scancode::A  => Some(0x07),
-        Scancode::S  => Some(0x08),
-        Scancode::D  => Some(0x09),
-        Scancode::F  => Some(0x0E),
-        Scancode::Z  => Some(0x0A),
-        Scancode::X  => Some(0x00),
-        Scancode::C  => Some(0x0B),
-        Scancode::V  => Some(0x0F),
+        Scancode::Q => Some(0x04),
+        Scancode::W => Some(0x05),
+        Scancode::E => Some(0x06),
+        Scancode::R => Some(0x0D),
+        Scancode::A => Some(0x07),
+        Scancode::S => Some(0x08),
+        Scancode::D => Some(0x09),
+        Scancode::F => Some(0x0E),
+        Scancode::Z => Some(0x0A),
+        Scancode::X => Some(0x00),
+        Scancode::C => Some(0x0B),
+        Scancode::V => Some(0x0F),
         _ => None,
     }
 }
@@ -203,7 +226,7 @@ impl RunState {
     fn should_continue(&mut self) -> bool {
         if self.step {
             self.step = false;
-            return true
+            return true;
         }
         self.running
     }

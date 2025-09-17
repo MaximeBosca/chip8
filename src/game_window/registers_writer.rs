@@ -2,7 +2,7 @@ use crate::state::State;
 
 pub fn write_registers(state: &State) -> String {
     (0..state.register_numbers())
-        .map(|register_index| {write_register(register_index, state)})
+        .map(|register_index| write_register(register_index, state))
         .reduce(|a, b| format!("{}  {}", a, b))
         .unwrap()
 }

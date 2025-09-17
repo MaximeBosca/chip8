@@ -5,6 +5,7 @@ use crate::stack::Stack;
 
 const REGISTERS_SIZE: usize = 16;
 const RAM_SIZE: usize = 4096;
+
 pub struct State {
     pub ram: [u8; RAM_SIZE],
     pub stack: Stack,
@@ -19,12 +20,13 @@ pub struct State {
 
 impl State {
     pub(crate) fn decrease_timers(&mut self) {
-
-        self.delay_timer -= if self.delay_timer > 0 { 1 } else { 0 };
-        self.sound_timer -= if self.sound_timer > 0 { 1 } else { 0 };
+        // Fallback to zero rather than overflowing
+        self.delay_timer = self.delay_timer.saturating_sub(1);
+        self.sound_timer = self.sound_timer.saturating_sub(1);
     }
 }
 
+#[allow(dead_code)]
 impl State {
     pub fn new(screen_config: &ScreenConfig) -> Self {
         Self {
@@ -39,34 +41,34 @@ impl State {
             keypad: Keypad::new(),
         }
     }
-    pub fn register(self: &Self, index :usize) -> u8 {
+    pub fn register(&self, index: usize) -> u8 {
         self.registers[index]
     }
 
-    pub fn set_register(self: &mut Self, index: usize, value: u8) {
+    pub fn set_register(&mut self, index: usize, value: u8) {
         self.registers[index] = value;
     }
 
-    pub fn vf(self: &Self) -> u8 {
+    pub fn vf(&self) -> u8 {
         self.registers[REGISTERS_SIZE - 1]
     }
 
-    pub fn set_vf(self: &mut Self, value: u8) {
+    pub fn set_vf(&mut self, value: u8) {
         self.registers[REGISTERS_SIZE - 1] = value;
     }
 
-    pub fn read_ram(self: &Self, addr: usize) -> Result<u8, &str> {
+    pub fn read_ram(&self, addr: usize) -> Result<u8, &str> {
         if addr >= self.ram.len() {
-            return Err("Overflowing Ram")
+            return Err("Invalid address Pointer");
         }
         Ok(self.ram[addr])
     }
 
-    pub fn read_ram_16(self: &Self, addr: usize) -> Result<(u8, u8), &str> {
+    pub fn read_ram_16(&self, addr: usize) -> Result<(u8, u8), &str> {
         Ok((self.read_ram(addr)?, self.read_ram(addr + 1)?))
     }
 
-    pub fn register_numbers(self: &Self) -> usize {
+    pub fn register_numbers(&self) -> usize {
         self.registers.len()
     }
 }

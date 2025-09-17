@@ -1,21 +1,18 @@
-use std::iter::Rev;
 use std::slice::Iter;
 
 pub struct Stack {
-    stack: Vec<u16>
+    stack: Vec<u16>,
 }
 
 impl Stack {
-    pub(crate) fn read_all(&self) -> Iter<u16> {
+    pub(crate) fn read_all(&self) -> Iter<'_, u16> {
         self.stack.iter()
     }
 }
 
 impl Stack {
     pub fn new() -> Self {
-        Self {
-            stack: Vec::new()
-        }
+        Self { stack: Vec::new() }
     }
     pub fn push(&mut self, val: u16) {
         if self.stack.len() >= 16 {
