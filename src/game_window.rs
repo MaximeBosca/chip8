@@ -17,8 +17,8 @@ mod registers_writer;
 mod stack_writer;
 mod timer_writer;
 
-const HEADER_FONT_SIZE: f32 = 64.0;
-const TEXT_FONT_SIZE: f32 = 48.0;
+pub const HEADER_FONT_SIZE: f32 = 64.0;
+pub const TEXT_FONT_SIZE: f32 = 48.0;
 
 struct ScreenManager {
     screen_config: ScreenConfig,

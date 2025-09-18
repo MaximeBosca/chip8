@@ -2,6 +2,7 @@ extern crate sdl3;
 
 use sdl3::pixels::Color;
 
+use crate::game_window::{HEADER_FONT_SIZE, TEXT_FONT_SIZE};
 use crate::interpreter::InterpreterVariant;
 use crate::runner::{INTERPRETER_VARIANT, Runner};
 use crate::screen_config::{
@@ -26,15 +27,17 @@ macro_rules! print_help {
     () => {{
         let message = r#"
         Usage Commands:
-            --help, -h          Show this message.
-            --rom_path, -r      Custom path to rom file (unix paths)
-            --width_screen, -w  Set width of the screen in pixels
-            --height_screen, -e Set the height of the screen in pixels
-            --scale_screen, -s  Set the window scale in pixels (val > zero)
-            --on_color, -n      Set the color of the on state (red, green, ..)
-            --off_color, -f     Set the color of the off state (red, green, ..)
             --alt_color, -a     Set the color of the alt state (red, green, ..)
+            --header_size, -e   Set the header font size
+            --height_screen, -y Set the height of the screen in pixels
+            --help, -h          Show this message.
             --ivariant, -i      Specify the interpreter variant (cosmicvip, chip48)
+            --off_color, -f     Set the color of the off state (red, green, ..)
+            --on_color, -o      Set the color of the on state (red, green, ..)
+            --rom_path, -r      Custom path to rom file (unix paths)
+            --scale_screen, -s  Set the window scale in pixels (val > zero)
+            --text_size, -t     Set the text font size
+            --width_screen, -x  Set width of the screen in pixels
         "#;
         println!("{message}");
     }};
@@ -65,6 +68,10 @@ struct Cli {
     pub alt_color: Option<String>,
     /// Custom InterpreterVariant for the runner
     pub ivariant: Option<InterpreterVariant>,
+    /// Custom header font size
+    pub header_size: Option<f32>,
+    /// Custom text font size
+    pub text_size: Option<f32>,
 }
 
 impl Parse for Cli {
@@ -80,6 +87,8 @@ impl Parse for Cli {
         let mut off_color: Option<String> = None;
         let mut alt_color: Option<String> = None;
         let mut ivariant: Option<InterpreterVariant> = None;
+        let mut header_size: Option<f32> = None;
+        let mut text_size: Option<f32> = None;
 
         // Someone fix the short argument names :)
         while let Some(nxt_arg) = args.next() {
@@ -88,13 +97,14 @@ impl Parse for Cli {
                     print_help!();
                     std::process::exit(0);
                 }
+
                 "--rom_path" | "-r" => {
                     if let Some(p) = args.next() {
                         rom_path = Some(Path::new(&p).to_path_buf());
                     }
                 }
 
-                "--width_screen" | "-w" => {
+                "--width_screen" | "-x" => {
                     if let Some(p) = args.next() {
                         let p = p
                             .parse::<usize>()
@@ -102,7 +112,8 @@ impl Parse for Cli {
                         width_screen = Some(p);
                     }
                 }
-                "--height_screen" | "-e" => {
+
+                "--height_screen" | "-y" => {
                     if let Some(p) = args.next() {
                         let p = p
                             .parse::<usize>()
@@ -110,6 +121,7 @@ impl Parse for Cli {
                         height_screen = Some(p);
                     }
                 }
+
                 "--scale_screen" | "-s" => {
                     if let Some(p) = args.next() {
                         let p = p
@@ -118,21 +130,43 @@ impl Parse for Cli {
                         scale_screen = Some(p);
                     }
                 }
-                "--on_color" | "-n" => {
+
+                "--on_color" | "-o" => {
                     on_color = args.next();
                 }
+
                 "--off_color" | "-f" => {
                     off_color = args.next();
                 }
+
                 "--alt_color" | "-a" => {
                     alt_color = args.next();
                 }
+
                 "--ivariant" | "-i" => {
                     ivariant = args.next().and_then(|s| match s.to_lowercase().as_str() {
                         "cosmacvip" => Some(InterpreterVariant::CosmacVip),
                         "chip48" => Some(InterpreterVariant::Chip48),
                         _ => None,
                     })
+                }
+
+                "--header_size" | "-e" => {
+                    if let Some(p) = args.next() {
+                        let p = p
+                            .parse::<f32>()
+                            .map_err(|_err| format!("Invalid header font size value: {p}"))?;
+                        header_size = Some(p);
+                    }
+                }
+
+                "--text_size" | "-t" => {
+                    if let Some(p) = args.next() {
+                        let p = p
+                            .parse::<f32>()
+                            .map_err(|_err| format!("Invalid text font size value: {p}"))?;
+                        text_size = Some(p);
+                    }
                 }
                 _ => {}
             }
@@ -147,7 +181,22 @@ impl Parse for Cli {
             off_color,
             alt_color,
             ivariant,
+            header_size,
+            text_size,
         })
+    }
+}
+
+/// Holds the game window font sizes
+#[derive(Debug)]
+pub struct FontSize {
+    pub text: f32,
+    pub header: f32,
+}
+
+impl FontSize {
+    fn new(header: f32, text: f32) -> Self {
+        Self { header, text }
     }
 }
 
@@ -158,6 +207,7 @@ pub struct Config {
     pub screen_scale: usize,
     pub colors: ScreenColors,
     pub ivariant: InterpreterVariant,
+    pub font_size: FontSize,
 }
 
 fn get_color_code(name: String) -> Option<Color> {
@@ -192,12 +242,16 @@ fn load_config() -> Result<Config, String> {
 
     let ivariant = args.ivariant.unwrap_or(INTERPRETER_VARIANT);
 
+    let header_size = args.header_size.unwrap_or(HEADER_FONT_SIZE);
+    let text_size = args.text_size.unwrap_or(TEXT_FONT_SIZE);
+
     Ok(Config {
         rom_path,
         dimensions: ScreenDimensions::new(screen_width, screen_height),
         screen_scale,
         colors,
         ivariant,
+        font_size: FontSize::new(header_size, text_size),
     })
 }
 
