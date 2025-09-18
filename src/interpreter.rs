@@ -34,6 +34,7 @@ impl Interpreter {
         let instruction = decode(byte1, byte2);
         self.execute(instruction, state);
     }
+
     fn execute(&self, instruction: Instruction, state: &mut State) {
         match instruction {
             Instruction::ClearScreen => state.screen.clear(),
@@ -87,8 +88,9 @@ impl Interpreter {
             Instruction::StoreRegisters(rx) => self.memory_copy(state, rx, true),
             Instruction::LoadRegisters(rx) => self.memory_copy(state, rx, false),
             Instruction::System => (), // pass
-            Instruction::Unknown(opcode, value) => {
-                panic!("Unkown instruction {:#X} with value {}", opcode, value)
+            Instruction::Unsupported(opcode, value) => {
+                eprintln!("Unkown instruction {:#X} with value {}", opcode, value);
+                std::process::exit(1);
             }
         }
     }
