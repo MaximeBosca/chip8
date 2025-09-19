@@ -41,6 +41,7 @@ pub enum ExitStatus {
     Reset,
 }
 
+#[derive(Default)]
 struct RunState {
     running: bool,
     step: bool,
@@ -62,6 +63,7 @@ pub struct Runner<'a> {
     next_timer_tick: Duration,
     run_state: RunState,
     state: State,
+    rom_path: PathBuf,
 }
 
 impl<'a> Runner<'a> {
@@ -75,27 +77,27 @@ impl<'a> Runner<'a> {
         );
         let sdl_context = sdl3::init().unwrap();
         let mut state = State::new(&screen_config);
-        let font_address = FONT_ADDRESS;
-        load_rom(&mut state, config.rom_path);
-        load_font(&mut state, FONT, font_address);
+
+        load_rom(&mut state, config.rom_path.clone());
+        load_font(&mut state, FONT, FONT_ADDRESS);
+
         let game_window = GameWindow::new(&sdl_context, screen_config);
-        let interpreter = Interpreter::new(config.ivariant, font_address);
+        let interpreter = Interpreter::new(config.ivariant, FONT_ADDRESS);
         let audio_player = AudioPlayer::new(&sdl_context);
         let event_pump = sdl_context.event_pump().unwrap();
-        let run_state = RunState {
-            running: false,
-            step: false,
-        };
+
         Self {
             state,
             game_window,
             interpreter,
             event_pump,
-            run_state,
+            run_state: RunState::default(),
             next_timer_tick: Duration::new(0, 0),
             audio_player,
+            rom_path: config.rom_path,
         }
     }
+
     pub fn run(&mut self) {
         'running: loop {
             let start = SystemTime::now();
@@ -109,7 +111,11 @@ impl<'a> Runner<'a> {
                         if let Some(status) = result {
                             match status {
                                 ExitStatus::Quit => break 'running,
-                                ExitStatus::Reset => continue 'running,
+                                // Reset the state machine
+                                ExitStatus::Reset => {
+                                    self.reset_state();
+                                    continue 'running;
+                                }
                             }
                         }
                         game_key_down(&mut self.state, key);
@@ -133,6 +139,14 @@ impl<'a> Runner<'a> {
             self.game_window.update(&self.state);
             self.sleep(start, should_decrement);
         }
+    }
+
+    fn reset_state(&mut self) {
+        self.state.reset();
+        let _ = std::mem::take(&mut self.run_state);
+        let r_path = self.rom_path.clone();
+        load_rom(&mut self.state, r_path);
+        load_font(&mut self.state, FONT, FONT_ADDRESS);
     }
 
     fn sleep(&mut self, start: SystemTime, should_decrement: bool) {

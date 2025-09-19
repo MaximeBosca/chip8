@@ -77,7 +77,7 @@ pub fn print_instruction(instruction: &Instruction) -> String {
         Instruction::DecimalConversion(x) => format!("CONV V{:X}", x),
         Instruction::LoadRegisters(x) => format!("LOAD V{:X}", x),
         Instruction::StoreRegisters(x) => format!("STORE V{:X}", x),
-        Instruction::Unknown(_, _) => "UNKNOWN".to_string(),
+        Instruction::Unsupported(_, _) => "UNKNOWN".to_string(),
     }
 }
 

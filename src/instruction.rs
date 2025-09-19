@@ -25,7 +25,7 @@ pub enum Instruction {
     SubroutineCall(u16),
     SubroutineReturn,
     System,
-    Unknown(u8, u16),
+    Unsupported(u8, u16),
 }
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ impl From<(u8, u8)> for Instruction {
             0xD => Instruction::Draw(x, y, n),
             0xE => opcode_e(opcode, x, nn, nnn),
             0xF => opcode_f(opcode, x, nn, nnn),
-            _ => Instruction::Unknown(opcode, nnn),
+            _ => Instruction::Unsupported(opcode, nnn),
         }
     }
 }
@@ -100,7 +100,7 @@ fn opcode_e(opcode: u8, x: usize, nn: u8, nnn: u16) -> Instruction {
     match nn {
         0x9E => Instruction::SkipIfKey(x, true),
         0xA1 => Instruction::SkipIfKey(x, false),
-        _ => Instruction::Unknown(opcode, nnn),
+        _ => Instruction::Unsupported(opcode, nnn),
     }
 }
 
@@ -115,7 +115,7 @@ fn opcode_f(opcode: u8, x: usize, nn: u8, nnn: u16) -> Instruction {
         0x33 => Instruction::DecimalConversion(x),
         0x55 => Instruction::StoreRegisters(x),
         0x65 => Instruction::LoadRegisters(x),
-        _ => Instruction::Unknown(opcode, nnn),
+        _ => Instruction::Unsupported(opcode, nnn),
     }
 }
 fn get_register_index(nibble: u8) -> usize {

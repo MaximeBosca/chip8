@@ -41,6 +41,19 @@ impl State {
             keypad: Keypad::new(),
         }
     }
+
+    /// Reset the stack and program counters, Clears the screen, and ram
+    pub fn reset(&mut self) {
+        let _ = std::mem::replace(&mut self.stack, Stack::new());
+        let _ = std::mem::replace(&mut self.registers, [0; REGISTERS_SIZE]);
+        let _ = std::mem::replace(&mut self.ram, [0; RAM_SIZE]);
+        self.program_counter = 0;
+        self.index = 0;
+        self.delay_timer = 0;
+        self.sound_timer = 0;
+        self.screen.clear();
+    }
+
     pub fn register(&self, index: usize) -> u8 {
         self.registers[index]
     }
