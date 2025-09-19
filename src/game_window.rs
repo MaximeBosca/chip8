@@ -27,16 +27,16 @@ struct ScreenManager {
 }
 
 pub struct GameWindow<'a> {
-    screen_manager: ScreenManager,
-    header_font: Font<'a>,
-    text_font: Font<'a>,
+    controls_panel: Panel,
     game_panel: Panel,
+    header_font: Font<'a>,
+    index_panel: Panel,
     instructions_panel: Panel,
     registers_panel: Panel,
-    index_panel: Panel,
-    timer_panel: Panel,
+    screen_manager: ScreenManager,
     stack_panel: Panel,
-    controls_panel: Panel,
+    text_font: Font<'a>,
+    timer_panel: Panel,
 }
 
 impl GameWindow<'_> {
@@ -52,7 +52,7 @@ impl GameWindow<'_> {
             .build()
             .unwrap();
         let mut canvas = create_renderer(window, None).unwrap();
-        canvas.set_draw_color(screen_config.off_color);
+        canvas.set_draw_color(screen_config.colors.off_color);
         canvas.clear();
         canvas.present();
 
@@ -113,6 +113,7 @@ impl GameWindow<'_> {
             .load_font("assets/Zolofont.ttf", TEXT_FONT_SIZE)
             .unwrap();
         let texture_creator = canvas.texture_creator();
+
         let screen_manager = ScreenManager {
             canvas,
             screen_config,
@@ -135,7 +136,8 @@ impl GameWindow<'_> {
     pub fn update(&mut self, state: &State) {
         self.screen_manager
             .canvas
-            .set_draw_color(self.screen_manager.screen_config.off_color);
+            .set_draw_color(self.screen_manager.screen_config.colors.off_color);
+
         self.screen_manager.canvas.clear();
         self.draw_controls(state);
         self.draw_instructions(state);
@@ -167,7 +169,7 @@ impl GameWindow<'_> {
     fn draw_instructions(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.instructions_panel.clone());
         self.screen_manager.write_text(
-            instruction_writer::write_instructions(state),
+            &instruction_writer::write_instructions(state),
             &self.text_font,
             remaining_rect,
         );
@@ -176,7 +178,7 @@ impl GameWindow<'_> {
     fn draw_registers(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.registers_panel.clone());
         let drawn_rect = self.screen_manager.write_text(
-            registers_writer::write_registers(state),
+            &registers_writer::write_registers(state),
             &self.text_font,
             remaining_rect,
         );
@@ -184,10 +186,11 @@ impl GameWindow<'_> {
             subtract_rect(self.registers_panel.boundaries, drawn_rect, Direction::Up);
     }
 
-    fn draw_layout(&mut self, state: &State) {
+
+    fn draw_layout(&mut self, _state: &State) {
         self.screen_manager
             .canvas
-            .set_draw_color(self.screen_manager.screen_config.on_color);
+            .set_draw_color(self.screen_manager.screen_config.colors.on_color);
         self.screen_manager
             .canvas
             .draw_rects(&[
@@ -206,8 +209,8 @@ impl GameWindow<'_> {
             .texture_creator
             .create_texture_target(
                 self.screen_manager.screen_config.pixel_format,
-                self.screen_manager.screen_config.width as u32,
-                self.screen_manager.screen_config.height as u32,
+                self.screen_manager.screen_config.dimensions.width as u32,
+                self.screen_manager.screen_config.dimensions.height as u32,
             )
             .unwrap();
         texture
@@ -227,12 +230,12 @@ impl GameWindow<'_> {
     fn write_header(&mut self, panel: Panel) -> Rect {
         let mut drawn_rect =
             self.screen_manager
-                .write_text(panel.header, &self.header_font, panel.boundaries);
+                .write_text(&panel.header, &self.header_font, panel.boundaries);
         drawn_rect.set_x(panel.boundaries.left());
         drawn_rect.set_width(panel.boundaries.width());
         self.screen_manager
             .canvas
-            .set_draw_color(self.screen_manager.screen_config.on_color);
+            .set_draw_color(self.screen_manager.screen_config.colors.on_color);
         self.screen_manager
             .canvas
             .draw_rect(FRect::from(drawn_rect))
@@ -244,7 +247,7 @@ impl GameWindow<'_> {
         let remaining_rect = self.write_header(self.index_panel.clone());
         let drawn_rect =
             self.screen_manager
-                .write_text(write_index(state), &self.text_font, remaining_rect);
+                .write_text(&write_index(state), &self.text_font, remaining_rect);
         self.timer_panel.boundaries =
             subtract_rect(self.index_panel.boundaries, drawn_rect, Direction::Up);
     }
@@ -253,14 +256,14 @@ impl GameWindow<'_> {
         let remaining_rect = self.write_header(self.timer_panel.clone());
         let drawn_rect =
             self.screen_manager
-                .write_text(write_timer(state), &self.text_font, remaining_rect);
+                .write_text(&write_timer(state), &self.text_font, remaining_rect);
         self.stack_panel.boundaries =
             subtract_rect(self.timer_panel.boundaries, drawn_rect, Direction::Up);
     }
     fn draw_stack(&mut self, state: &State) {
         let remaining_rect = self.write_header(self.stack_panel.clone());
         self.screen_manager.write_text(
-            stack_writer::write_stack(state),
+            &stack_writer::write_stack(state),
             &self.text_font,
             remaining_rect,
         );
@@ -288,28 +291,26 @@ impl GameWindow<'_> {
     }
 
     fn draw_line(&mut self, line: [u8; 4], state: &State, rect: Rect) -> Rect {
-        let mut drawn_rect = self
-            .screen_manager
-            .write_text("|".to_string(), &self.text_font, rect);
+        let mut drawn_rect = self.screen_manager.write_text("|", &self.text_font, rect);
         let mut remaining_rect = subtract_rect(rect, drawn_rect, Direction::Left);
         for key in line {
             let color = if state.keypad.is_pressed(key) {
-                self.screen_manager.screen_config.alt_color
+                self.screen_manager.screen_config.colors.alt_color
             } else {
-                self.screen_manager.screen_config.on_color
+                self.screen_manager.screen_config.colors.on_color
             };
             let drawn = self.screen_manager.write_text_color(
-                format!("{:X}", key),
+                &format!("{:X}", key),
                 &self.text_font,
                 remaining_rect,
                 color,
-                self.screen_manager.screen_config.off_color,
+                self.screen_manager.screen_config.colors.off_color,
             );
             remaining_rect = subtract_rect(remaining_rect, drawn, Direction::Left);
             drawn_rect = add_rect(drawn, drawn_rect, Direction::Right);
         }
         self.screen_manager
-            .write_text("|".to_string(), &self.text_font, remaining_rect);
+            .write_text("|", &self.text_font, remaining_rect);
         drawn_rect
     }
 }
@@ -395,6 +396,7 @@ fn add_rect(start: Rect, drawn: Rect, direction: Direction) -> Rect {
     Rect::new(x, y, width, height)
 }
 
+#[allow(dead_code)]
 enum Direction {
     Up,
     Down,
@@ -403,31 +405,25 @@ enum Direction {
 }
 
 impl ScreenManager {
-    fn write_text(&mut self, text: String, font: &Font, dst: Rect) -> Rect {
+    fn write_text(&mut self, text: &str, font: &Font, dst: Rect) -> Rect {
         self.write_text_color(
             text,
             font,
             dst,
-            self.screen_config.on_color,
-            self.screen_config.off_color,
+            self.screen_config.colors.on_color,
+            self.screen_config.colors.off_color,
         )
     }
     fn write_text_color(
         &mut self,
-        text: String,
+        text: &str,
         font: &Font,
         dst: Rect,
         on_color: Color,
         off_color: Color,
     ) -> Rect {
         let mut draw_rect = self.apply_lateral_margin(&dst, true);
-        let rendered_text = render_text(
-            font,
-            on_color,
-            off_color,
-            text.as_str(),
-            draw_rect.width() as i32,
-        );
+        let rendered_text = render_text(font, on_color, off_color, text, draw_rect.width() as i32);
         draw_text(
             rendered_text,
             &mut draw_rect,

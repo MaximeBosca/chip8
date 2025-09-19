@@ -22,7 +22,7 @@ pub struct PrintableInstruction {
 }
 
 impl PrintableInstruction {
-    pub fn print(&self, state: &State) -> String {
+    pub fn print(&self, _state: &State) -> String {
         format(format_args!(
             "{:#03X}: {}",
             self.address,

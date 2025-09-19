@@ -1,4 +1,3 @@
-use std::iter::Rev;
 use std::slice::Iter;
 
 pub struct Stack {
@@ -6,7 +5,7 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub(crate) fn read_all(&self) -> Iter<u16> {
+    pub(crate) fn read_all(&self) -> Iter<'_, u16> {
         self.stack.iter()
     }
 }

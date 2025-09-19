@@ -29,13 +29,16 @@ Besides that, the four following special keys are used in the program :
 * F3: Restarts the emulation
 * F4: Stops the emulation and exits the program
 
-You can change a few values inside the code to change configuration.
-
-* [main](src/main.rs) contains a variable `rom_path` you'll have to change in order to change the loaded and executed rom (sorry I did not make a file explorer 🙇‍♂️ )
-* [screen_config](src/screen_config.rs) contains a lot of different constants to change the screen size, scale, and colors.
-* [runner](src/runner.rs) contains an INTERPRETER_VARIANT constant you can change to select between the 2 available variants implemented : CosmacVip and Chip48
-
-
+## Configurable Options
+### Option              Flag
+- Rom Path              --rom_path
+- Screen Width          --width_screen
+- Screen Height         --height_screen
+- Screen Scale          --scale_screen
+- On Color              --on_color
+- Off Color             --off_color
+- Alt Color             --alt_color
+- Interpreter Variant   --ivariant
 
 ## Current development state
 This project is some kind of research project I did for myself with myself to experiment with rust and familiarize myself with emulation.

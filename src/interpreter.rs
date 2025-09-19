@@ -2,10 +2,22 @@ use crate::instruction::{Instruction, Operator};
 use crate::state::State;
 use rand::Rng;
 
+#[allow(dead_code)]
+#[derive(Debug)]
 pub enum InterpreterVariant {
     CosmacVip,
     Chip48,
 }
+
+impl std::fmt::Display for InterpreterVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InterpreterVariant::CosmacVip => write!(f, "cosmacvip"),
+            InterpreterVariant::Chip48 => write!(f, "chip48"),
+        }
+    }
+}
+
 pub struct Interpreter {
     variant: InterpreterVariant,
     font_address: u16,
@@ -189,8 +201,8 @@ fn subtract(x: u8, y: u8) -> (u8, u8) {
 }
 
 fn draw(state: &mut State, rx: usize, ry: usize, sprite_height: u8) {
-    let x = state.register(rx) as usize % state.screen.width;
-    let y = state.register(ry) as usize % state.screen.height;
+    let x = state.register(rx) as usize % state.screen.dimensions.width;
+    let y = state.register(ry) as usize % state.screen.dimensions.height;
     let begin = state.index as usize;
     let end = begin + sprite_height as usize;
     let overflow = state.screen.draw_sprite(x, y, &state.ram[begin..end]) as u8;

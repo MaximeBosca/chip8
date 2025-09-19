@@ -1,28 +1,29 @@
 #[derive(Debug)]
 pub enum Instruction {
-    ClearScreen,
-    Jump(u16),
-    SubroutineCall(u16),
-    SubroutineReturn,
-    SkipEqualValue(usize, u8, bool),
-    SkipEqualRegister(usize, usize, bool),
-    SetRegister(usize, u8),
+    // Might wanna sort these
+    AddToIndex(usize),
     AddValueRegister(usize, u8),
     Arithmetic(usize, usize, Operator),
-    SetIndex(u16),
-    JumpOffset(usize, u16),
-    Random(usize, u8),
+    ClearScreen,
+    DecimalConversion(usize),
     Draw(usize, usize, u8),
-    SkipIfKey(usize, bool),
+    FontCharacter(usize),
+    GetKey(usize),
+    Jump(u16),
+    JumpOffset(usize, u16),
+    LoadRegisters(usize),
+    Random(usize, u8),
     ReadDelayTimer(usize),
     SetDelayTimer(usize),
+    SetIndex(u16),
+    SetRegister(usize, u8),
     SetSoundTimer(usize),
-    AddToIndex(usize),
-    GetKey(usize),
-    FontCharacter(usize),
-    DecimalConversion(usize),
+    SkipEqualRegister(usize, usize, bool),
+    SkipEqualValue(usize, u8, bool),
+    SkipIfKey(usize, bool),
     StoreRegisters(usize),
-    LoadRegisters(usize),
+    SubroutineCall(u16),
+    SubroutineReturn,
     System,
     Unknown(u8, u16),
 }
@@ -51,7 +52,7 @@ impl From<(u8, u8)> for Instruction {
         let nnn = (byte1 as u16 & 0x0F) << 8 | byte2 as u16;
 
         match opcode {
-            0x0 => opcode_0(opcode, nn, nnn),
+            0x0 => opcode_0(nn),
             0x1 => Instruction::Jump(nnn),
             0x2 => Instruction::SubroutineCall(nnn),
             0x3 => Instruction::SkipEqualValue(x, nn, true),
@@ -72,7 +73,7 @@ impl From<(u8, u8)> for Instruction {
     }
 }
 
-fn opcode_0(opcode: u8, nn: u8, nnn: u16) -> Instruction {
+fn opcode_0(nn: u8) -> Instruction {
     match nn {
         0xE0 => Instruction::ClearScreen,
         0xEE => Instruction::SubroutineReturn,
@@ -120,7 +121,7 @@ fn opcode_f(opcode: u8, x: usize, nn: u8, nnn: u16) -> Instruction {
 fn get_register_index(nibble: u8) -> usize {
     let mut index = nibble;
     if index >= 16 {
-        index = index >> 4;
+        index >>= 4;
     }
     index as usize
 }
