@@ -1,10 +1,10 @@
+use sdl3::Sdl;
 use sdl3::audio::{AudioCallback, AudioFormat, AudioSpec, AudioStream, AudioStreamWithCallback};
-use sdl3::{Sdl};
 
 struct SquareWave {
     phase_inc: f32,
     phase: f32,
-    volume: f32
+    volume: f32,
 }
 
 pub struct AudioPlayer {
@@ -34,14 +34,19 @@ impl AudioPlayer {
         let source_freq = 44100;
         let source_spec = AudioSpec {
             freq: Some(source_freq),
-            channels: Some(1),                      // mono
-            format: Some(AudioFormat::f32_sys())    // floating 32 bit samples
+            channels: Some(1),                    // mono
+            format: Some(AudioFormat::f32_sys()), // floating 32 bit samples
         };
-        let device = audio_subsystem.open_playback_stream(&source_spec, SquareWave {
-            phase_inc: 440.0 / source_freq as f32,
-            phase: 0.0,
-            volume: 0.25
-        }).unwrap();
+        let device = audio_subsystem
+            .open_playback_stream(
+                &source_spec,
+                SquareWave {
+                    phase_inc: 440.0 / source_freq as f32,
+                    phase: 0.0,
+                    volume: 0.25,
+                },
+            )
+            .unwrap();
         Self {
             audio_device: device,
         }

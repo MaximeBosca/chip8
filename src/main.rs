@@ -1,20 +1,20 @@
 extern crate sdl3;
 
-use std::fs;
-use std::io::Read;
 use crate::runner::{ExitStatus, Runner};
 use crate::state::State;
+use std::fs;
+use std::io::Read;
 
-mod screen;
-mod stack;
-mod instruction;
-mod game_window;
-mod state;
-mod interpreter;
-mod screen_config;
-mod runner;
-mod keypad;
 mod audio_player;
+mod game_window;
+mod instruction;
+mod interpreter;
+mod keypad;
+mod runner;
+mod screen;
+mod screen_config;
+mod stack;
+mod state;
 
 fn main() {
     loop {
@@ -33,6 +33,7 @@ fn main() {
 
 fn load_rom(state: &mut State, path: &str) {
     let mut f = fs::File::open(path).expect("File not found");
-    f.read(&mut state.ram[0x200..]).expect("Error loading ROM into RAM");
+    f.read(&mut state.ram[0x200..])
+        .expect("Error loading ROM into RAM");
     state.program_counter = 0x200u16;
 }

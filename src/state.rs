@@ -19,7 +19,6 @@ pub struct State {
 
 impl State {
     pub(crate) fn decrease_timers(&mut self) {
-
         self.delay_timer -= if self.delay_timer > 0 { 1 } else { 0 };
         self.sound_timer -= if self.sound_timer > 0 { 1 } else { 0 };
     }
@@ -39,7 +38,7 @@ impl State {
             keypad: Keypad::new(),
         }
     }
-    pub fn register(self: &Self, index :usize) -> u8 {
+    pub fn register(self: &Self, index: usize) -> u8 {
         self.registers[index]
     }
 
@@ -57,7 +56,7 @@ impl State {
 
     pub fn read_ram(self: &Self, addr: usize) -> Result<u8, &str> {
         if addr >= self.ram.len() {
-            return Err("Overflowing Ram")
+            return Err("Overflowing Ram");
         }
         Ok(self.ram[addr])
     }

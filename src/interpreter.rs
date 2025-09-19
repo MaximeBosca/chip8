@@ -1,6 +1,6 @@
-use rand::Rng;
 use crate::instruction::{Instruction, Operator};
 use crate::state::State;
+use rand::Rng;
 
 pub enum InterpreterVariant {
     CosmacVip,
@@ -29,31 +29,33 @@ impl Interpreter {
             Instruction::SubroutineCall(address) => {
                 state.stack.push(state.program_counter);
                 state.program_counter = address
-            },
+            }
             Instruction::SubroutineReturn => state.program_counter = state.stack.pop(),
-            Instruction::SkipEqualValue(rx, value, skip_condition) =>
-                skip_compare(state,
-                             state.register(rx),
-                             value,
-                             skip_condition), // 0x3 0x4
-            Instruction::SkipEqualRegister(rx, ry, skip_condition) =>
-                skip_compare(state,
-                             state.register(rx),
-                             state.register(ry),
-                             skip_condition), // 0x5 0x9
+            Instruction::SkipEqualValue(rx, value, skip_condition) => {
+                skip_compare(state, state.register(rx), value, skip_condition)
+            } // 0x3 0x4
+            Instruction::SkipEqualRegister(rx, ry, skip_condition) => skip_compare(
+                state,
+                state.register(rx),
+                state.register(ry),
+                skip_condition,
+            ), // 0x5 0x9
             Instruction::SetRegister(rx, value) => state.set_register(rx, value), // 0x6
-            Instruction::AddValueRegister(rx, value) =>
-                state.set_register(rx, value.wrapping_add(state.register(rx))), // 0x7
-            Instruction::Arithmetic(rx, ry, arithmetic_operator) =>
-                self.arithmetic_operation(state, rx, ry, arithmetic_operator),
+            Instruction::AddValueRegister(rx, value) => {
+                state.set_register(rx, value.wrapping_add(state.register(rx)))
+            } // 0x7
+            Instruction::Arithmetic(rx, ry, arithmetic_operator) => {
+                self.arithmetic_operation(state, rx, ry, arithmetic_operator)
+            }
             Instruction::SetIndex(value) => state.index = value,
-            Instruction::JumpOffset(register_x, offset) => self.jump_offset(state, register_x, offset),
-            Instruction::Random(rx, value) => state.set_register(rx,{
+            Instruction::JumpOffset(register_x, offset) => {
+                self.jump_offset(state, register_x, offset)
+            }
+            Instruction::Random(rx, value) => state.set_register(rx, {
                 let random: u8 = rand::rng().random();
                 random & value
             }),
-            Instruction::Draw(rx, ry, sprite_height) =>
-                draw(state, rx, ry, sprite_height),
+            Instruction::Draw(rx, ry, sprite_height) => draw(state, rx, ry, sprite_height),
             Instruction::SkipIfKey(rx, if_pressed) => skip_key_press(state, rx, if_pressed),
             Instruction::ReadDelayTimer(rx) => state.set_register(rx, state.delay_timer),
             Instruction::SetDelayTimer(rx) => state.delay_timer = state.register(rx),
@@ -66,28 +68,31 @@ impl Interpreter {
                 }
             }
             Instruction::GetKey(rx) => await_key_press(state, rx),
-            Instruction::FontCharacter(rx) =>
-                state.index = self.font_address + (state.register(rx) & 0x0F) as u16 * 5,
+            Instruction::FontCharacter(rx) => {
+                state.index = self.font_address + (state.register(rx) & 0x0F) as u16 * 5
+            }
             Instruction::DecimalConversion(rx) => decimal_conversion(state, rx),
             Instruction::StoreRegisters(rx) => self.memory_copy(state, rx, true),
             Instruction::LoadRegisters(rx) => self.memory_copy(state, rx, false),
             Instruction::System => (), // pass
-            Instruction::Unknown(opcode, value) => panic!("Unkown instruction {:#X} with value {}", opcode, value),
+            Instruction::Unknown(opcode, value) => {
+                panic!("Unkown instruction {:#X} with value {}", opcode, value)
+            }
         }
     }
     fn memory_copy(&self, state: &mut State, rx: usize, store: bool) {
         let mut working_index = state.index;
-        for i in 0..rx+1 {
+        for i in 0..rx + 1 {
             if store {
                 state.ram[working_index as usize] = state.register(i);
             } else {
-                state.set_register(i,state.ram[working_index as usize]);
+                state.set_register(i, state.ram[working_index as usize]);
             }
             state.index = match self.variant {
                 InterpreterVariant::CosmacVip => working_index,
                 InterpreterVariant::Chip48 => state.index,
             };
-            working_index+=1;
+            working_index += 1;
         }
     }
 
@@ -103,7 +108,7 @@ impl Interpreter {
         let y = state.register(ry);
         match operator {
             Operator::Set => state.set_register(rx, y),
-            Operator::BinaryOr => state.set_register(rx,x | y),
+            Operator::BinaryOr => state.set_register(rx, x | y),
             Operator::BinaryAnd => state.set_register(rx, x & y),
             Operator::BinaryXor => state.set_register(rx, x ^ y),
             _ => {
@@ -111,7 +116,7 @@ impl Interpreter {
                     Operator::Add => {
                         let (res, overflow) = x.overflowing_add(y);
                         (res, overflow as u8)
-                    },
+                    }
                     Operator::Subtract => subtract(x, y),
                     Operator::SubtractInverse => subtract(y, x),
                     Operator::ShiftR => shift(&self.variant, x, y, false),
@@ -178,7 +183,7 @@ fn shift(variant: &InterpreterVariant, x: u8, y: u8, left: bool) -> (u8, u8) {
 
 fn subtract(x: u8, y: u8) -> (u8, u8) {
     if x >= y {
-        return (x - y, 1)
+        return (x - y, 1);
     }
     (255 - y + x + 1, 0)
 }

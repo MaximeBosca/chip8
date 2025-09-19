@@ -18,20 +18,28 @@ pub const PIXEL_MASKS: PixelMasks = PixelMasks {
     amask: 0xFF000000,
 };
 
-
 pub struct ScreenConfig {
     pub width: usize,
     pub height: usize,
     pub scale: usize,
     pub margin: usize,
     pub bytes_per_pixel: usize,
-    pub pixel_format : PixelFormat,
+    pub pixel_format: PixelFormat,
     pub on_color: Color,
     pub off_color: Color,
     pub alt_color: Color,
 }
 impl ScreenConfig {
-    pub fn new(width: usize, height: usize, scale: usize, margin: usize, pixel_masks: PixelMasks, on_color: Color, off_color: Color, alt_color: Color) -> Self {
+    pub fn new(
+        width: usize,
+        height: usize,
+        scale: usize,
+        margin: usize,
+        pixel_masks: PixelMasks,
+        on_color: Color,
+        off_color: Color,
+        alt_color: Color,
+    ) -> Self {
         ScreenConfig {
             width,
             height,
@@ -45,14 +53,16 @@ impl ScreenConfig {
         }
     }
     pub fn default() -> Self {
-        Self::new(SCREEN_WIDTH,
-                  SCREEN_HEIGHT,
-                  SCREEN_SCALE,
-                  MARGIN,
-                  PIXEL_MASKS,
-                  COLOR_GREEN,
-                  COLOR_BLACK,
-                  COLOR_RED)
+        Self::new(
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            SCREEN_SCALE,
+            MARGIN,
+            PIXEL_MASKS,
+            COLOR_GREEN,
+            COLOR_BLACK,
+            COLOR_RED,
+        )
     }
     pub fn pitch(&self) -> usize {
         self.width * self.bytes_per_pixel
@@ -78,6 +88,4 @@ impl ScreenConfig {
     fn color_to_u8(&self, color: Color) -> Box<[u8]> {
         Box::from(color.to_u32(&self.pixel_format).to_le_bytes())
     }
-
-
 }
