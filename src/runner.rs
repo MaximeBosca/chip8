@@ -10,7 +10,6 @@ use sdl3::keyboard::Scancode;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use std::{fs, io::Read};
-
 const FONT: [[u8; 5]; 16] = [
     [0xf0, 0x90, 0x90, 0x90, 0xf0], // 0
     [0x20, 0x60, 0x20, 0x20, 0x70], // 1

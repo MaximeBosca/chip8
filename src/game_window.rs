@@ -105,7 +105,6 @@ impl GameWindow<'_> {
             game_panel.boundaries.width(),
             game_panel.boundaries.height(),
         );
-
         let ttf_context = sdl3::ttf::init().unwrap();
         let header_font = ttf_context
             .load_font("assets/Zolofont.ttf", HEADER_FONT_SIZE)
@@ -138,6 +137,7 @@ impl GameWindow<'_> {
         self.screen_manager
             .canvas
             .set_draw_color(self.screen_manager.screen_config.colors.off_color);
+
         self.screen_manager.canvas.clear();
         self.draw_controls(state);
         self.draw_instructions(state);
@@ -185,6 +185,7 @@ impl GameWindow<'_> {
         self.index_panel.boundaries =
             subtract_rect(self.registers_panel.boundaries, drawn_rect, Direction::Up);
     }
+
 
     fn draw_layout(&mut self, _state: &State) {
         self.screen_manager
