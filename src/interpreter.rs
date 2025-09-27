@@ -1,9 +1,10 @@
 use crate::instruction::{Instruction, Operator};
 use crate::state::State;
+use clap::ValueEnum;
 use rand::Rng;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum InterpreterVariant {
     CosmacVip,
     Chip48,
@@ -74,11 +75,7 @@ impl Interpreter {
             Instruction::SetDelayTimer(rx) => state.delay_timer = state.register(rx),
             Instruction::SetSoundTimer(rx) => state.sound_timer = state.register(rx),
             Instruction::AddToIndex(rx) => {
-                let under = state.index <= 0xFFF;
                 state.index = state.index.wrapping_add(state.register(rx) as u16);
-                if under && state.index > 0xFFF {
-                    state.set_vf(1);
-                }
             }
             Instruction::GetKey(rx) => await_key_press(state, rx),
             Instruction::FontCharacter(rx) => {
@@ -146,6 +143,7 @@ impl Interpreter {
 }
 
 fn await_key_press(state: &mut State, rx: usize) {
+    // TODO : Wait for a key to be pressed and released and then put value in vx
     let found = find_key(state, rx);
     if !found {
         state.program_counter -= 2;

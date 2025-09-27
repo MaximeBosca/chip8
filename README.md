@@ -31,14 +31,12 @@ Besides that, the four following special keys are used in the program :
 
 ## Configurable Options
 ### Option              Flag
-- Rom Path              --rom_path
-- Screen Width          --width_screen
-- Screen Height         --height_screen
-- Screen Scale          --scale_screen
-- On Color              --on_color
-- Off Color             --off_color
-- Alt Color             --alt_color
-- Interpreter Variant   --ivariant
+- Rom Path              -f, --rom_path
+- Screen resolution     -r, --resolution
+- On Color              -1, --on_color
+- Off Color             -0, --off_color
+- Alt Color             -a, --alt_color
+- Interpreter Variant   -i, --interpreter-variant
 
 ## Current development state
 This project is some kind of research project I did for myself with myself to experiment with rust and familiarize myself with emulation.
@@ -57,9 +55,10 @@ Here are some ideas I have about what can be improved, you can work on any of th
 - [ ] Adding a configuration file for users to be able to change the (3) colors of the screen, keymapping, default rom folder, interpreter variant (CosmacVip or Chip48), etc...
 - [ ] Adding a new special key (ex: F5) for Rom selection using a folder explorer (I would loooove for the explorer to be text based and to live inside the current SDL window, using my custom fond but that would be a lot of work)
 - [ ] Making a build of this code that embarks Sdl3 so that people don't have to have it installed on their computers to use the emulator.
-- [ ] Dealing more properly with errors : I know, unwrap is a brutal way to deal with errors that might crash very easylly. Especially a Sdl recognized sound driver is needed to execute the code while it shouldn't. But for now the emulator crashes if there is not one.
+- [ ] Dealing more properly with errors : I know, unwrap is a brutal way to deal with errors that might crash very easily. Especially a Sdl recognized sound driver is needed to execute the code while it shouldn't. But for now the emulator crashes if there is not one.
 
 ## Thanks and Inspiration
+Thank you [Juan Milkah](https://github.com/juanmilkah) for the contribution !
 I would really like to thank [Tobias V. Langhoff](https://github.com/tobiasvl) for his blog post [Guide to making a CHIP-8 emulator](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) that was my main inspiration and reference for this whole project.
 
 I would also like to thank the developers of the test roms I used to validate my interpreter so thanks to 

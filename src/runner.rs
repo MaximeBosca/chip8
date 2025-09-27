@@ -1,8 +1,8 @@
-use crate::Config;
 use crate::audio_player::AudioPlayer;
+use crate::config::Config;
 use crate::game_window::GameWindow;
 use crate::interpreter::{Interpreter, InterpreterVariant};
-use crate::screen_config::{MARGIN, PIXEL_MASKS, ScreenConfig};
+use crate::screen_config::ScreenConfig;
 use crate::state::State;
 use sdl3::EventPump;
 use sdl3::event::Event;
@@ -32,9 +32,15 @@ const FONT: [[u8; 5]; 16] = [
 const FONT_ADDRESS: u16 = 0x050;
 pub const INTERPRETER_VARIANT: InterpreterVariant = InterpreterVariant::Chip48;
 
-const TICK_INTERVAL: Duration = Duration::new(1 / 700, 0);
-const TIMER_INTERVAL: Duration = Duration::new(1 / 60, 0);
+const TICK_FREQUENCY: f64 = 700.0;
+const TIMER_FREQUENCY: f64 = 60.0;
 
+fn tick_interval() -> Duration {
+    Duration::from_secs_f64(1.0 / TICK_FREQUENCY)
+}
+fn timer_interval() -> Duration {
+    Duration::from_secs_f64(1.0 / TIMER_FREQUENCY)
+}
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExitStatus {
     Quit,
@@ -56,6 +62,7 @@ fn load_rom(state: &mut State, path: PathBuf) {
 }
 
 pub struct Runner<'a> {
+    config: Config,
     audio_player: AudioPlayer,
     event_pump: EventPump,
     game_window: GameWindow<'a>,
@@ -63,30 +70,23 @@ pub struct Runner<'a> {
     next_timer_tick: Duration,
     run_state: RunState,
     state: State,
-    rom_path: PathBuf,
 }
 
 impl<'a> Runner<'a> {
     pub fn init(config: Config) -> Self {
-        let screen_config = ScreenConfig::new(
-            config.dimensions,
-            config.screen_scale,
-            MARGIN,
-            PIXEL_MASKS,
-            config.colors,
-        );
         let sdl_context = sdl3::init().unwrap();
-        let mut state = State::new(&screen_config);
+        let mut state = State::new(&config.screen_config);
 
         load_rom(&mut state, config.rom_path.clone());
         load_font(&mut state, FONT, FONT_ADDRESS);
 
-        let game_window = GameWindow::new(&sdl_context, screen_config);
-        let interpreter = Interpreter::new(config.ivariant, FONT_ADDRESS);
+        let game_window = GameWindow::new(&sdl_context, &config.screen_config);
+        let interpreter = Interpreter::new(config.interpreter_variant, FONT_ADDRESS);
         let audio_player = AudioPlayer::new(&sdl_context);
         let event_pump = sdl_context.event_pump().unwrap();
 
         Self {
+            config,
             state,
             game_window,
             interpreter,
@@ -94,7 +94,6 @@ impl<'a> Runner<'a> {
             run_state: RunState::default(),
             next_timer_tick: Duration::new(0, 0),
             audio_player,
-            rom_path: config.rom_path,
         }
     }
 
@@ -136,7 +135,8 @@ impl<'a> Runner<'a> {
                 should_decrement = true;
             }
             self.play_sound(should_decrement);
-            self.game_window.update(&self.state);
+            self.game_window
+                .update(&self.state, &self.config.screen_config);
             self.sleep(start, should_decrement);
         }
     }
@@ -144,14 +144,14 @@ impl<'a> Runner<'a> {
     fn reset_state(&mut self) {
         self.state.reset();
         let _ = std::mem::take(&mut self.run_state);
-        let r_path = self.rom_path.clone();
+        let r_path = self.config.rom_path.clone();
         load_rom(&mut self.state, r_path);
         load_font(&mut self.state, FONT, FONT_ADDRESS);
     }
 
     fn sleep(&mut self, start: SystemTime, should_decrement: bool) {
         let elapsed = start.elapsed().unwrap_or(Duration::new(0, 0));
-        let to_sleep = TICK_INTERVAL
+        let to_sleep = tick_interval()
             .checked_sub(elapsed)
             .unwrap_or(Duration::new(0, 0));
         self.next_timer_tick = self
@@ -165,7 +165,7 @@ impl<'a> Runner<'a> {
         if should_decrement {
             self.state.decrease_timers();
         }
-        TIMER_INTERVAL
+        timer_interval()
     }
 
     fn play_sound(&self, is_playing: bool) {

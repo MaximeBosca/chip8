@@ -1,11 +1,11 @@
 extern crate sdl3;
-use crate::screen_config::{ScreenConfig, ScreenDimensions};
+use crate::screen_config::{Dimensions, ScreenConfig};
 use bit_iter::BitIter;
 
 pub struct Screen {
-    pub dimensions: ScreenDimensions,
+    pub dimensions: Dimensions,
     bytes_per_pixel: usize,
-    on_color: Box<[u8]>,
+    on_color: Box<[u8]>, // TODO: Remove box
     off_color: Box<[u8]>,
     pub pixels: Vec<u8>,
 }
@@ -13,13 +13,15 @@ pub struct Screen {
 impl Screen {
     pub fn new(config: &ScreenConfig) -> Self {
         Self {
-            dimensions: config.dimensions,
+            dimensions: config.screen_dimensions,
             bytes_per_pixel: config.bytes_per_pixel,
             on_color: config.on_color_u8(),
             off_color: config.off_color_u8(),
             pixels: vec![
                 0u8;
-                config.dimensions.width * config.dimensions.height * config.bytes_per_pixel
+                config.screen_dimensions.width
+                    * config.screen_dimensions.height
+                    * config.bytes_per_pixel
             ],
         }
     }

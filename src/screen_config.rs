@@ -1,13 +1,9 @@
+use crate::cli::ColorValue;
 use sdl3::pixels::{Color, PixelFormat, PixelMasks};
+
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
-pub const SCREEN_SCALE: usize = 16;
-
-pub const ON_COLOR: Color = Color::GREEN;
-pub const OFF_COLOR: Color = Color::BLACK;
-pub const ALT_COLOR: Color = Color::RED;
-
-pub const MARGIN: usize = 1;
+pub const MARGIN: usize = 16;
 
 pub const PIXEL_MASKS: PixelMasks = PixelMasks {
     bpp: 32,
@@ -18,38 +14,52 @@ pub const PIXEL_MASKS: PixelMasks = PixelMasks {
 };
 
 pub struct ScreenConfig {
-    pub dimensions: ScreenDimensions,
-    pub scale: usize,
-    pub margin: usize,
+    pub window_dimensions: Dimensions,
+    pub screen_dimensions: Dimensions,
+    pub colors: Colors,
     pub bytes_per_pixel: usize,
     pub pixel_format: PixelFormat,
-    pub colors: ScreenColors,
 }
 
 #[derive(Debug)]
-pub struct ScreenColors {
+pub struct Colors {
     pub on_color: Color,
     pub off_color: Color,
     pub alt_color: Color,
 }
 
-impl ScreenColors {
-    pub fn new(on_color: Color, off_color: Color, alt_color: Color) -> Self {
+impl Colors {
+    pub fn new(on_color: ColorValue, off_color: ColorValue, alt_color: ColorValue) -> Self {
         Self {
-            on_color,
-            off_color,
-            alt_color,
+            on_color: to_sdl_color(on_color),
+            off_color: to_sdl_color(off_color),
+            alt_color: to_sdl_color(alt_color),
         }
     }
 }
 
+fn to_sdl_color(color: ColorValue) -> Color {
+    match color {
+        ColorValue::Green => Color::GREEN,
+        ColorValue::Red => Color::RED,
+        ColorValue::Yellow => Color::YELLOW,
+        ColorValue::Blue => Color::BLUE,
+        ColorValue::Magenta => Color::MAGENTA,
+        ColorValue::Cyan => Color::CYAN,
+        ColorValue::White => Color::WHITE,
+        ColorValue::Black => Color::BLACK,
+        ColorValue::Grey => Color::GREY,
+        ColorValue::Gray => Color::GRAY,
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
-pub struct ScreenDimensions {
+pub struct Dimensions {
     pub width: usize,
     pub height: usize,
 }
 
-impl ScreenDimensions {
+impl Dimensions {
     pub fn new(width: usize, height: usize) -> Self {
         Self { width, height }
     }
@@ -57,33 +67,17 @@ impl ScreenDimensions {
 
 #[allow(dead_code)]
 impl ScreenConfig {
-    pub fn new(
-        dimensions: ScreenDimensions,
-        scale: usize,
-        margin: usize,
-        pixel_masks: PixelMasks,
-        colors: ScreenColors,
-    ) -> Self {
+    pub fn new(window_dimensions: Dimensions, colors: Colors) -> Self {
         ScreenConfig {
-            dimensions,
-            scale,
-            margin,
-            bytes_per_pixel: pixel_masks.bpp as usize / 8,
-            pixel_format: PixelFormat::from_masks(pixel_masks),
+            window_dimensions,
+            screen_dimensions: Dimensions::new(SCREEN_WIDTH, SCREEN_HEIGHT),
+            bytes_per_pixel: PIXEL_MASKS.bpp as usize / 8,
+            pixel_format: PixelFormat::from_masks(PIXEL_MASKS),
             colors,
         }
     }
-    pub fn default() -> Self {
-        Self::new(
-            ScreenDimensions::new(SCREEN_WIDTH, SCREEN_HEIGHT),
-            SCREEN_SCALE,
-            MARGIN,
-            PIXEL_MASKS,
-            ScreenColors::new(Color::GREEN, Color::BLACK, Color::RED),
-        )
-    }
     pub fn pitch(&self) -> usize {
-        self.dimensions.width * self.bytes_per_pixel
+        self.screen_dimensions.width * self.bytes_per_pixel
     }
     pub fn off_color_u8(&self) -> Box<[u8]> {
         self.color_to_u8(self.colors.off_color)
@@ -91,17 +85,8 @@ impl ScreenConfig {
     pub fn on_color_u8(&self) -> Box<[u8]> {
         self.color_to_u8(self.colors.on_color)
     }
-    pub fn scaled_margin(&self) -> usize {
-        self.margin * self.scale
-    }
-    pub fn unscaled_margin(&self) -> usize {
-        self.margin
-    }
-    pub fn game_window_width(&self) -> u32 {
-        (self.dimensions.width * SCREEN_SCALE) as u32
-    }
-    pub fn game_window_height(&self) -> u32 {
-        (self.dimensions.height * SCREEN_SCALE) as u32
+    pub fn margin(&self) -> usize {
+        MARGIN
     }
     fn color_to_u8(&self, color: Color) -> Box<[u8]> {
         Box::from(color.to_u32(&self.pixel_format).to_le_bytes())
