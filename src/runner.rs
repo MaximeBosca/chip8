@@ -34,12 +34,9 @@ pub const INTERPRETER_VARIANT: InterpreterVariant = InterpreterVariant::Chip48;
 
 const TICK_FREQUENCY: f64 = 700.0;
 const TIMER_FREQUENCY: f64 = 60.0;
-
-fn tick_interval() -> Duration {
-    Duration::from_secs_f64(1.0 / TICK_FREQUENCY)
-}
-fn timer_interval() -> Duration {
-    Duration::from_secs_f64(1.0 / TIMER_FREQUENCY)
+const FRAME_FREQUENCY: f64 = 60.0;
+fn frame_interval() -> Duration {
+    Duration::from_secs_f64(1.0 / FRAME_FREQUENCY)
 }
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExitStatus {
@@ -100,6 +97,7 @@ impl<'a> Runner<'a> {
     pub fn run(&mut self) {
         'running: loop {
             let start = SystemTime::now();
+            // handling events
             for event in self.event_pump.poll_iter() {
                 match event {
                     Event::KeyDown {
@@ -130,14 +128,17 @@ impl<'a> Runner<'a> {
                 }
             }
             let mut should_decrement = false;
-            if self.run_state.should_continue() {
-                self.interpreter.game_step(&mut self.state);
-                should_decrement = true;
+            for i in 0..self.config.instructions_per_frame {
+                if self.run_state.should_continue() {
+                    self.interpreter.game_step(&mut self.state);
+                    should_decrement = true;
+                }
             }
             self.play_sound(should_decrement);
+            self.decrease_timers(should_decrement);
             self.game_window
                 .update(&self.state, &self.config.screen_config);
-            self.sleep(start, should_decrement);
+            self.sleep(start);
         }
     }
 
@@ -149,23 +150,18 @@ impl<'a> Runner<'a> {
         load_font(&mut self.state, FONT, FONT_ADDRESS);
     }
 
-    fn sleep(&mut self, start: SystemTime, should_decrement: bool) {
+    fn sleep(&mut self, start: SystemTime) {
         let elapsed = start.elapsed().unwrap_or(Duration::new(0, 0));
-        let to_sleep = tick_interval()
+        let to_sleep = frame_interval()
             .checked_sub(elapsed)
             .unwrap_or(Duration::new(0, 0));
-        self.next_timer_tick = self
-            .next_timer_tick
-            .checked_sub(elapsed)
-            .unwrap_or_else(|| self.decrease_timer(should_decrement));
         std::thread::sleep(to_sleep);
     }
 
-    fn decrease_timer(&mut self, should_decrement: bool) -> Duration {
+    fn decrease_timers(&mut self, should_decrement: bool) {
         if should_decrement {
             self.state.decrease_timers();
         }
-        timer_interval()
     }
 
     fn play_sound(&self, is_playing: bool) {

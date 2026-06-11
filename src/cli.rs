@@ -30,6 +30,10 @@ pub struct Cli {
     #[arg(value_enum, short, long, default_value_t=InterpreterVariant::Chip48, value_name = "VARIANT")]
     interpreter_variant: InterpreterVariant,
 
+    /// Number of instructions executed every frame
+    #[arg(short='p', long="ipf", default_value_t = 11, value_name = "INSTRUCTIONS PER FRAME")]
+    instructions_per_frame: u8,
+
     /// Screen resolution
     #[arg(value_enum, short, long, default_value_t=Resolution::FullHD, value_name = "VARIANT")]
     resolution: Resolution,
@@ -45,6 +49,7 @@ impl Cli {
             self.interpreter_variant,
             dimensions,
             colors,
+            self.instructions_per_frame,
         )
     }
 }

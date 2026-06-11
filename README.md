@@ -30,13 +30,15 @@ Besides that, the four following special keys are used in the program :
 * F4: Stops the emulation and exits the program
 
 ## Configurable Options
-### Option              Flag
-- Rom Path              -f, --rom_path
-- Screen resolution     -r, --resolution
-- On Color              -1, --on_color
-- Off Color             -0, --off_color
-- Alt Color             -a, --alt_color
-- Interpreter Variant   -i, --interpreter-variant
+### Option                      Flag
+- Rom Path                      -f, --rom_path
+- Screen resolution             -r, --resolution
+- On Color                      -1, --on_color
+- Off Color                     -0, --off_color
+- Alt Color                     -a, --alt_color
+- Interpreter Variant           -i, --interpreter-variant
+- Resolution                    -r, --resolution
+- Instructions per frame (IPF)  -p, --ipf
 
 ## Current development state
 This project is some kind of research project I did for myself with myself to experiment with rust and familiarize myself with emulation.
